@@ -169,6 +169,21 @@ const icons = {
   warning: "M12 9v4M12 17h.01M10.3 3.6l-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.7-3.2L13.7 3.6a2 2 0 0 0-3.4 0Z",
   arrow: "M5 12h14M13 6l6 6-6 6",
   plus: "M12 5v14M5 12h14",
+  home: "M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6",
+  chat: "M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z",
+  business: "M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16M3 21h18M9 7h1M9 11h1M9 15h1M14 7h1M14 11h1M14 15h1",
+  agents: "M12 2v4M6.5 4.5l2.8 2.8M17.5 4.5l-2.8 2.8M5 11h14v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8ZM9 15h.01M15 15h.01",
+  knowledge: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15Z",
+  marketing: "M3 11l18-6-6 18-3.5-7.5L3 11Z",
+  sales: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6",
+  factory: "M3 21h18M5 21V9l5 3V9l5 3V5h4v16M8 16h1M12 16h1M16 16h1",
+  operations: "M4 6h16M4 12h16M4 18h16M8 6v12M16 6v12",
+  integrations: "M8 12h8M9 7H7a5 5 0 0 0 0 10h2M15 7h2a5 5 0 0 1 0 10h-2",
+  analytics: "M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-9",
+  founder: "M12 3l3 6 6 .8-4.5 4.3 1.2 6.1L12 17l-5.7 3.2 1.2-6.1L3 9.8 9 9l3-6Z",
+  settings: "M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5ZM19.4 15a1.8 1.8 0 0 0 .36 1.98l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.08a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-1.98.36l-.05.05a2 2 0 0 1-2.83-2.83l.05-.05A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.08a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.36-1.98l-.05-.05a2 2 0 0 1 2.83-2.83l.05.05A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.08a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 1.98-.36l.05-.05a2 2 0 0 1 2.83 2.83l-.05.05A1.8 1.8 0 0 0 19.4 9c.2.6.8 1 1.6 1H21a2 2 0 0 1 0 4h-.08a1.8 1.8 0 0 0-1.52 1Z",
+  mic: "M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3ZM19 11a7 7 0 0 1-14 0M12 18v4",
+  search: "m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z",
 };
 
 function Icon({ name, className = "h-4 w-4" }) {
@@ -205,7 +220,7 @@ function statusClass(ok) {
 
 function ShellButton({ children, onClick, disabled, dark = false, type }) {
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-50 ${dark ? "bg-ink text-white hover:bg-ink/85" : "bg-white text-ink/65 shadow-sm hover:text-ink"}`}>
+    <button type={type} onClick={onClick} disabled={disabled} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition disabled:opacity-50 ${dark ? "bg-violet-500 text-white hover:bg-violet-400" : "border border-slate-800 bg-slate-900 text-slate-200 hover:border-violet-400/40"}`}>
       {children}
     </button>
   );
@@ -213,28 +228,28 @@ function ShellButton({ children, onClick, disabled, dark = false, type }) {
 
 function Metric({ title, value, detail }) {
   return (
-    <div className="rounded-2xl border border-ink/10 bg-white p-5">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/40">{title}</p>
-      <p className="mt-5 font-display text-4xl font-semibold">{value}</p>
-      <p className="mt-1 text-xs text-ink/45">{detail}</p>
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{title}</p>
+      <p className="mt-5 font-display text-4xl font-semibold text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{detail}</p>
     </div>
   );
 }
 
 function StateCard({ title, ok, value, detail }) {
   return (
-    <div className="rounded-2xl border border-ink/10 bg-white p-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-sm font-semibold text-slate-100">{title}</p>
         <span className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider ${statusClass(ok)}`}>{value}</span>
       </div>
-      {detail && <p className="mt-3 text-xs leading-5 text-ink/45">{detail}</p>}
+      {detail && <p className="mt-3 text-xs leading-5 text-slate-500">{detail}</p>}
     </div>
   );
 }
 
 function EmptyState({ children }) {
-  return <div className="rounded-xl border border-dashed border-ink/15 px-4 py-8 text-center text-sm text-ink/45">{children}</div>;
+  return <div className="rounded-xl border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-500">{children}</div>;
 }
 
 function List({ items, empty, render }) {
@@ -248,7 +263,7 @@ function Panel({ title, subtitle, children, action }) {
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
           <p className="eyebrow">{title}</p>
-          {subtitle && <p className="mt-2 text-sm text-ink/45">{subtitle}</p>}
+          {subtitle && <p className="mt-2 text-sm text-slate-400">{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -367,14 +382,380 @@ function MissionLanding({ user, data, activeBusiness, onBrief, onOpenConversatio
   );
 }
 
+const navItems = [
+  ["Executive Dashboard", "home"],
+  ["Ask Pardha", "chat"],
+  ["Businesses", "business"],
+  ["Agents", "agents"],
+  ["Knowledge", "knowledge"],
+  ["Marketing", "marketing"],
+  ["Sales", "sales"],
+  ["Product Factory", "factory"],
+  ["Operations", "operations"],
+  ["Integrations", "integrations"],
+  ["Analytics", "analytics"],
+  ["Founder", "founder"],
+  ["Settings", "settings"],
+];
+
+function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, businesses, onSwitchBusiness, onRefresh, onLogout, onLoadDemo, working, notice, failures, lastUpdated, children, voiceState, onVoiceStart, onVoiceStop }) {
+  return (
+    <div className="min-h-screen bg-[#070b12] text-slate-100">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[18.75rem] border-r border-slate-800/90 bg-[#0b111b] px-3 py-6 lg:block">
+        <div className="mb-10 flex items-center gap-4 px-2">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-violet-500 text-cyan-300 shadow-[0_0_34px_rgba(139,92,246,0.45)]"><Icon name="command" className="h-6 w-6" /></span>
+          <div>
+            <p className="font-display text-xl font-bold tracking-wide text-white">PARDHA</p>
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-500">Agentic OS</p>
+          </div>
+        </div>
+        <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Workspace</p>
+        <nav className="space-y-2">
+          {navItems.map(([name, icon]) => (
+            <button key={name} onClick={() => setActivePage(name)} className={`group flex min-h-12 w-full items-center gap-4 rounded-2xl px-3 text-left text-sm font-bold transition ${activePage === name ? "border border-violet-400/30 bg-violet-500/20 text-white" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}>
+              <span className={`grid h-9 w-9 place-items-center rounded-xl ${activePage === name ? "bg-violet-500/35 text-white" : "bg-slate-900 text-slate-500 group-hover:text-cyan-300"}`}><Icon name={icon} /></span>
+              <span>{name}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="absolute inset-x-3 bottom-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-300">
+          <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />System live
+        </div>
+      </aside>
+
+      <main className="min-h-screen lg:pl-[18.75rem]">
+        <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-[#070b12]/88 backdrop-blur">
+          <div className="flex min-h-[6.25rem] items-center gap-4 px-4 md:px-8">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{new Intl.DateTimeFormat("en", { weekday: "long", day: "2-digit", month: "long" }).format(new Date())}</p>
+              <h1 className="mt-2 truncate font-display text-3xl font-semibold text-white md:text-4xl">{activePage}</h1>
+            </div>
+            <label className="hidden min-h-12 w-full max-w-sm items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 text-slate-500 xl:flex">
+              <Icon name="search" />
+              <span className="text-sm">Search Pardha...</span>
+            </label>
+            <select value={activeBusinessId} onChange={(event) => onSwitchBusiness(event.target.value)} className="hidden min-h-12 max-w-[13rem] rounded-2xl border border-slate-800 bg-slate-950 px-4 text-sm font-bold text-slate-200 outline-none md:block">
+              {businesses.map((business) => <option key={business.business_id} value={business.business_id}>{business.business_name}</option>)}
+            </select>
+            <button onClick={onLoadDemo} disabled={working} className="hidden min-h-12 rounded-2xl border border-slate-800 bg-slate-950 px-4 text-sm font-bold text-slate-300 disabled:opacity-50 md:block">Load demo</button>
+            <button onClick={onRefresh} className="grid h-12 w-12 place-items-center rounded-2xl border border-slate-800 bg-slate-950 text-slate-300" aria-label="Refresh dashboard"><Icon name="refresh" /></button>
+            <button onClick={onLogout} className="hidden items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-2 text-left md:flex">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-violet-500 text-sm font-bold text-white">{(user.full_name || "F").split(" ").map((part) => part[0]).join("").slice(0, 2)}</span>
+              <span><span className="block text-sm font-bold text-white">{user.full_name}</span><span className="block text-xs text-slate-500">{user.role || "Founder"}</span></span>
+            </button>
+          </div>
+        </header>
+        <div className="px-4 py-6 md:px-8">
+          {failures.length > 0 && <div className="mb-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-200">{failures.length} live endpoint{failures.length === 1 ? "" : "s"} need attention. Review Integrations or Settings.</div>}
+          {notice && <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">{notice}</div>}
+          {children}
+          <p className="mt-8 text-xs text-slate-600">{lastUpdated ? `Updated ${relativeTime(lastUpdated)}` : "Waiting for first refresh"}</p>
+        </div>
+      </main>
+      <FloatingVoice state={voiceState} onStart={onVoiceStart} onStop={onVoiceStop} />
+    </div>
+  );
+}
+
+function DarkPanel({ title, subtitle, children, action, className = "" }) {
+  return (
+    <section className={`rounded-[1.75rem] border border-slate-800 bg-slate-950/70 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.22)] ${className}`}>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{title}</p>
+          {subtitle && <p className="mt-2 text-sm leading-6 text-slate-400">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function DarkEmpty({ children }) {
+  return <div className="rounded-2xl border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-500">{children}</div>;
+}
+
+function DarkList({ items, empty, render }) {
+  if (!items?.length) return <DarkEmpty>{empty}</DarkEmpty>;
+  return <div className="space-y-3">{items.map(render)}</div>;
+}
+
+function WorkItem({ title, detail, accent = "violet", action }) {
+  const accents = {
+    violet: "border-violet-400/25 bg-violet-400/10 text-violet-200",
+    cyan: "border-cyan-400/25 bg-cyan-400/10 text-cyan-200",
+    green: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
+    amber: "border-amber-400/25 bg-amber-400/10 text-amber-200",
+    red: "border-rose-400/25 bg-rose-400/10 text-rose-200",
+  };
+  return (
+    <article className="flex items-start justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/55 px-4 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-bold text-slate-100">{title}</p>
+        {detail && <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>}
+      </div>
+      {action || <span className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider ${accents[accent] || accents.violet}`}>Open</span>}
+    </article>
+  );
+}
+
+function FloatingVoice({ state, onStart, onStop }) {
+  const active = !["idle", "completed"].includes(state);
+  return (
+    <div className="fixed bottom-5 right-5 z-50">
+      <button onClick={active ? onStop : onStart} className="grid h-16 w-16 place-items-center rounded-full border border-violet-300/30 bg-violet-500 text-white shadow-[0_0_46px_rgba(139,92,246,0.55)]" aria-label="Floating voice assistant">
+        <Icon name="mic" className="h-6 w-6" />
+      </button>
+      <p className="mt-2 text-center text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">{label(state)}</p>
+    </div>
+  );
+}
+
+function VoiceCore({ state }) {
+  return (
+    <div className="relative grid aspect-square min-h-[18rem] place-items-center overflow-hidden rounded-[1.75rem] border border-violet-400/20 bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.25),rgba(6,10,18,0.12)_40%,transparent_70%)]">
+      <div className="absolute h-[24rem] w-[24rem] rounded-full border border-violet-400/12" />
+      <div className="absolute h-[15rem] w-[15rem] rounded-full border border-cyan-400/12" />
+      <div className={`grid h-36 w-36 place-items-center rounded-full bg-violet-600 shadow-[0_0_80px_rgba(139,92,246,0.72)] orb-${state}`}>
+        <div className="flex h-16 items-center gap-2">
+          {[30, 48, 70, 92, 64, 42].map((height, index) => <span key={index} className="w-2 rounded-full bg-cyan-300" style={{ height }} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExecutiveDashboardPage({ user, data, activeBusiness, onAsk, onVoice, onApprove, onReject, working, voiceState }) {
+  const name = (user.full_name || "Founder").split(" ")[0];
+  const brief = data.founder?.ceo_summary || data.executiveCommand?.summary || data.ceo?.summary;
+  const todayGoal = data.founderGoals?.[0] || data.planningGoals?.[0] || data.objectives?.[0];
+  const approvals = [...(data.planApprovals || []), ...((data.softwareFactoryDashboard?.pending_approvals || []))].slice(0, 5);
+  const recommendations = [
+    ...(data.founder?.todays_priorities || []),
+    ...(data.executiveCommand?.quick_actions || []),
+    ...(data.businessHealth?.ai_recommendations || []),
+  ].filter(Boolean).slice(0, 6);
+  const healthScore = data.businessHealth?.customer_health?.score ?? data.businessHealth?.business_health_score ?? data.commercialReadiness?.overall_score;
+  return (
+    <section className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.55fr]">
+        <DarkPanel title="Good Morning" subtitle={activeBusiness?.business_name ? `Current business: ${activeBusiness.business_name}` : "Select a business to load operating context."} className="min-h-[28rem]">
+          <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
+            <div>
+              <span className="inline-flex rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-300">Admin verified</span>
+              <h2 className="mt-8 max-w-4xl font-display text-5xl font-semibold leading-tight text-white md:text-6xl">Good morning, {name}.</h2>
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">Pardha is organized around your founder workflow: executive brief, conversation, business context, then operations.</p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button onClick={() => onAsk("Generate today's executive briefing.")} className="min-h-12 rounded-2xl bg-violet-500 px-6 text-sm font-bold text-white">Ask Pardha</button>
+                <button onClick={() => onAsk("Open daily briefing.")} className="min-h-12 rounded-2xl border border-slate-800 bg-slate-900 px-6 text-sm font-bold text-slate-200">Open daily briefing</button>
+              </div>
+            </div>
+            <VoiceCore state={voiceState} />
+          </div>
+        </DarkPanel>
+        <DarkPanel title="Today's Goal" subtitle={todayGoal?.title || "No active goal has been created yet."}>
+          {todayGoal ? <WorkItem title={todayGoal.title} detail={`${label(todayGoal.status || todayGoal.current_status || "active")} / ${todayGoal.owner || todayGoal.department || "Founder"}`} accent="cyan" /> : <DarkEmpty>Create a goal from Ask Pardha or Founder.</DarkEmpty>}
+          <div className="mt-4">
+            <DarkPanel title="Voice Assistant" subtitle="Visible everywhere and scoped to the current page." className="bg-slate-900/45">
+              <button onClick={onVoice} className="min-h-11 w-full rounded-2xl bg-cyan-400 px-4 text-sm font-bold text-slate-950">Start voice</button>
+            </DarkPanel>
+          </div>
+        </DarkPanel>
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <DarkPanel title="Today's Executive Brief" subtitle="Business-level summary from live founder and agent data.">
+          {brief ? <p className="text-xl leading-9 text-slate-200">{brief}</p> : <DarkEmpty>No executive brief is available yet. Ask Pardha to generate one for the current business.</DarkEmpty>}
+        </DarkPanel>
+        <DarkPanel title="Business Health" subtitle="Founder-facing health only, no infrastructure metrics.">
+          {healthScore !== undefined ? (
+            <div className="grid gap-3">
+              <p className="font-display text-5xl font-semibold text-white">{healthScore}</p>
+              <p className="text-sm text-slate-500">Current business health score from business context.</p>
+              <DarkList items={(data.businessHealth?.ai_recommendations || []).slice(0, 3)} empty="No health recommendations yet." render={(item, index) => <WorkItem key={index} title={item} accent="green" />} />
+            </div>
+          ) : <DarkEmpty>Business health is not available for the current context.</DarkEmpty>}
+        </DarkPanel>
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr_0.8fr]">
+        <DarkPanel title="Pending Approvals" subtitle="Founder decisions required before work proceeds.">
+          <DarkList items={approvals} empty="No approvals are waiting." render={(approval) => (
+            <WorkItem key={approval.approval_id || approval.plan_id} title={approval.title || approval.approval_type} detail={`${label(approval.risk_level || "review")} / ${label(approval.status || "pending")}`} accent={approval.risk_level === "high" ? "red" : "amber"} action={<div className="flex gap-2"><button disabled={working || !approval.plan_id} onClick={() => approval.plan_id && onApprove(approval.plan_id)} className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300 disabled:opacity-40">Approve</button><button disabled={working || !approval.plan_id} onClick={() => approval.plan_id && onReject(approval.plan_id)} className="rounded-full bg-rose-400/15 px-3 py-1 text-xs font-bold text-rose-300 disabled:opacity-40">Reject</button></div>} />
+          )} />
+        </DarkPanel>
+        <DarkPanel title="Current Recommendations" subtitle="Recommended next actions from executive, health, and command surfaces.">
+          <DarkList items={recommendations} empty="No recommendations yet." render={(item, index) => <WorkItem key={index} title={typeof item === "string" ? item : item.title} detail={typeof item === "string" ? "" : item.detail} accent="violet" />} />
+        </DarkPanel>
+        <DarkPanel title="Quick Actions" subtitle="Conversation-first entry points.">
+          <div className="grid gap-3">
+            {["What should I do next?", "Review pending approvals.", "Create a product factory package.", "Show integration gaps."].map((prompt) => <button key={prompt} onClick={() => onAsk(prompt)} className="min-h-11 rounded-2xl border border-slate-800 bg-slate-900 px-4 text-left text-sm font-bold text-slate-200">{prompt}</button>)}
+          </div>
+        </DarkPanel>
+      </div>
+    </section>
+  );
+}
+
+function BusinessesPage({ data, activeBusiness, businessName, setBusinessName, createBusiness, switchBusiness, working }) {
+  return (
+    <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <DarkPanel title="Businesses" subtitle="Business is the second-level context after conversation.">
+        <form onSubmit={createBusiness} className="mb-5 flex gap-3">
+          <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} className="min-h-11 flex-1 rounded-2xl border border-slate-800 bg-slate-900 px-4 text-sm text-white outline-none" placeholder="New business name" />
+          <button disabled={working} className="rounded-2xl bg-violet-500 px-5 text-sm font-bold text-white">Create</button>
+        </form>
+        <DarkList items={data.businesses} empty="No businesses available." render={(business) => <button key={business.business_id} onClick={() => switchBusiness(business.business_id)} className={`w-full rounded-2xl border px-4 py-3 text-left ${activeBusiness?.business_id === business.business_id ? "border-violet-400/40 bg-violet-400/15" : "border-slate-800 bg-slate-900/55"}`}><span className="block text-sm font-bold text-white">{business.business_name}</span><span className="text-xs text-slate-500">{business.business_type || "workspace"}</span></button>} />
+      </DarkPanel>
+      <DarkPanel title="Current Business" subtitle={activeBusiness?.business_name || "No business selected."}>
+        {activeBusiness ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <WorkItem title="Objectives" detail={`${data.objectives.length} active records`} accent="cyan" />
+            <WorkItem title="Knowledge" detail={`${data.knowledge.length} context records`} accent="violet" />
+            <WorkItem title="Open Tasks" detail={`${data.tasks.filter((task) => task.status !== "completed").length} tasks waiting`} accent="amber" />
+            <WorkItem title="Recent Conversations" detail={`${data.conversations.length} saved threads`} accent="green" />
+          </div>
+        ) : <DarkEmpty>Select or create a business to view context.</DarkEmpty>}
+      </DarkPanel>
+    </section>
+  );
+}
+
+function AgentsPage({ data }) {
+  const canonical = ["CEO", "CTO", "PM", "Marketing", "Sales", "Finance", "HR", "QA", "Knowledge", "Operations", "Engineering"];
+  const executionByAgent = (data.executions || []).reduce((acc, item) => ({ ...acc, [item.agent_name]: item }), {});
+  return (
+    <section className="grid gap-6">
+      <DarkPanel title="Agents" subtitle="Every AI operator, its current work, memory, capabilities, history, and performance in one place.">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {canonical.map((name) => {
+            const registered = (data.agents || []).find((agent) => agent.name?.toLowerCase().includes(name.toLowerCase()));
+            const latest = executionByAgent[name] || (data.executions || []).find((execution) => execution.agent_name?.toLowerCase().includes(name.toLowerCase()));
+            const capabilities = (data.capabilities || []).filter((capability) => capability.agent_type?.toLowerCase?.().includes(name.toLowerCase()) || capability.name?.toLowerCase().includes(name.toLowerCase())).slice(0, 3);
+            return (
+              <article key={name} className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div><p className="text-lg font-bold text-white">{name}</p><p className="text-xs text-slate-500">{registered?.role || "Business operator"}</p></div>
+                  <span className={`rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase ${registered?.status === "active" || latest ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-800 text-slate-500"}`}>{registered?.status || (latest ? "active" : "idle")}</span>
+                </div>
+                <div className="mt-5 space-y-3">
+                  <WorkItem title="Current Task" detail={latest?.objective || latest?.task_title || latest?.status || "No active task"} accent="cyan" />
+                  <WorkItem title="Capabilities" detail={capabilities.map((item) => item.name).join(", ") || "No mapped capabilities returned"} accent="violet" />
+                  <WorkItem title="Memory" detail={`${(data.knowledge || []).filter((item) => `${item.category} ${item.tags}`.toLowerCase().includes(name.toLowerCase())).length} related knowledge records`} accent="green" />
+                  <WorkItem title="History" detail={latest ? `${label(latest.status)} ${relativeTime(latest.completed_at || latest.started_at)}` : "No execution history"} accent="amber" />
+                  <WorkItem title="Performance" detail={latest?.duration_ms ? `${latest.duration_ms}ms last run` : "No performance sample"} accent="violet" />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </DarkPanel>
+    </section>
+  );
+}
+
+function IntegrationsPage({ connectors, enterpriseIntegrations, jiraStatus, onTest }) {
+  const providers = ["GitHub", "Jira", "Gmail", "Calendar", "WhatsApp", "Meta", "Instagram", "LinkedIn", "VS Code", "Filesystem", "PostgreSQL", "MCP Runtime"];
+  return (
+    <section className="grid gap-6">
+      <DarkPanel title="Integrations" subtitle="Health, authentication, capabilities, latency, and logs for every operating connector.">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {providers.map((provider) => {
+            const key = provider.toLowerCase().replaceAll(" ", "_");
+            const connector = (connectors || []).find((item) => item.provider === key || item.name?.toLowerCase().includes(provider.toLowerCase()));
+            const enterprise = (enterpriseIntegrations || []).find((item) => item.provider === key);
+            const connected = connector?.connected || enterprise?.status === "connected" || (provider === "Jira" && jiraStatus?.connected);
+            return (
+              <article key={provider} className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 p-5">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div><p className="text-lg font-bold text-white">{provider}</p><p className="text-xs text-slate-500">{connector?.message || enterprise?.auth_type || "Connector not configured in this environment"}</p></div>
+                  <span className={`rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase ${connected ? "bg-emerald-400/10 text-emerald-300" : "bg-rose-400/10 text-rose-300"}`}>{connected ? "healthy" : "needs auth"}</span>
+                </div>
+                <div className="space-y-3">
+                  <WorkItem title="Authentication" detail={connector?.authentication_status || enterprise?.status || "not connected"} accent={connected ? "green" : "red"} />
+                  <WorkItem title="Capabilities" detail={(connector?.capabilities || enterprise?.scopes || []).join(", ") || "No capabilities reported"} accent="violet" />
+                  <WorkItem title="Latency" detail={connector?.latency_ms ? `${connector.latency_ms}ms` : "No latency sample"} accent="cyan" />
+                  <WorkItem title="Logs" detail={connector?.last_sync ? `Last sync ${relativeTime(connector.last_sync)}` : "No log events returned"} accent="amber" />
+                </div>
+                {connector && <button onClick={() => onTest(connector.provider)} className="mt-4 min-h-10 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 text-sm font-bold text-slate-200">Test connection</button>}
+              </article>
+            );
+          })}
+        </div>
+      </DarkPanel>
+    </section>
+  );
+}
+
+function AnalyticsPage({ data }) {
+  const rows = [
+    ["Business health", data.businessHealth?.customer_health?.score ?? data.commercialReadiness?.overall_score, "Current business health"],
+    ["Pipeline", data.salesSummary?.pipeline_value ? `$${data.salesSummary.pipeline_value}` : undefined, "Sales pipeline value"],
+    ["Marketing leads", data.marketingSummary?.leads, "Marketing generated leads"],
+    ["Open tasks", data.tasks.filter((task) => task.status !== "completed").length, "Work not completed"],
+    ["Approvals", data.planApprovals.length, "Founder decisions waiting"],
+    ["Conversations", data.conversations.length, "Saved operating threads"],
+  ].filter(([, value]) => value !== undefined && value !== null);
+  return (
+    <section className="grid gap-6">
+      <DarkPanel title="Analytics" subtitle="Founder-facing operating analytics from live dashboard data.">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {rows.map(([title, value, detail]) => <article key={title} className="rounded-[1.5rem] border border-slate-800 bg-slate-900/55 p-5"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</p><p className="mt-5 font-display text-4xl font-semibold text-white">{value}</p><p className="mt-2 text-sm text-slate-500">{detail}</p></article>)}
+        </div>
+        {!rows.length && <DarkEmpty>No analytics are available until a business context returns data.</DarkEmpty>}
+      </DarkPanel>
+    </section>
+  );
+}
+
+function FounderPage({ data, onAsk }) {
+  return (
+    <section className="grid gap-6 xl:grid-cols-[0.75fr_1.25fr]">
+      <DarkPanel title="Founder" subtitle="Personal workspace for high-level decisions and operating cadence.">
+        <div className="grid gap-3">
+          {["Generate founder brief.", "Show risks I should decide today.", "Prepare customer meeting notes.", "Summarize this week's progress."].map((prompt) => <button key={prompt} onClick={() => onAsk(prompt)} className="min-h-11 rounded-2xl border border-slate-800 bg-slate-900 px-4 text-left text-sm font-bold text-slate-200">{prompt}</button>)}
+        </div>
+      </DarkPanel>
+      <DarkPanel title="Founder Operating Log" subtitle="Recent conversations, goals, and approvals.">
+        <div className="grid gap-4 md:grid-cols-3">
+          <DarkList items={(data.conversations || []).slice(0, 5)} empty="No conversations yet." render={(item) => <WorkItem key={item.conversation_id} title={item.title} detail={relativeTime(item.updated_at)} accent="violet" />} />
+          <DarkList items={(data.founderGoals || []).slice(0, 5)} empty="No founder goals yet." render={(item) => <WorkItem key={item.goal_id} title={item.title} detail={label(item.status)} accent="cyan" />} />
+          <DarkList items={(data.planApprovals || []).slice(0, 5)} empty="No approvals waiting." render={(item) => <WorkItem key={item.approval_id} title={item.title} detail={label(item.risk_level)} accent="amber" />} />
+        </div>
+      </DarkPanel>
+    </section>
+  );
+}
+
+function SettingsPage({ data, diagnostics, failures }) {
+  return (
+    <section className="grid gap-6 xl:grid-cols-3">
+      <DarkPanel title="Settings" subtitle="Administration is last in the IA.">
+        <WorkItem title="Database" detail={diagnostics?.database_name || "Unknown database"} accent={diagnostics?.connected ? "green" : "red"} />
+        <div className="mt-3"><WorkItem title="Scheduler" detail={diagnostics?.scheduler_status || "unknown"} accent="cyan" /></div>
+        <div className="mt-3"><WorkItem title="API Failures" detail={`${failures.length} failed dashboard requests`} accent={failures.length ? "red" : "green"} /></div>
+      </DarkPanel>
+      <DarkPanel title="Security" subtitle="Auth, RBAC, and enterprise controls.">
+        <WorkItem title="Users" detail={`${data.enterpriseUsers?.length || data.enterpriseDashboard?.users?.count || 0} users`} accent="violet" />
+        <div className="mt-3"><WorkItem title="Tenants" detail={`${data.enterpriseTenants?.length || data.enterpriseDashboard?.tenant_health?.tenants || 0} tenants`} accent="cyan" /></div>
+        <div className="mt-3"><WorkItem title="Audit" detail={`${data.enterpriseAudit?.length || data.enterpriseDashboard?.audit_activity?.events || 0} events`} accent="amber" /></div>
+      </DarkPanel>
+      <DarkPanel title="Migration Plan" subtitle="How the redesign maps old modules into Founder workflows.">
+        {["Executive Dashboard replaces module-count homepage.", "Ask Pardha becomes the primary creation and command surface.", "Business context sits before administration.", "Agents, Marketing, Sales, Product Factory, Operations, Integrations, Analytics, Founder, and Settings are dedicated responsibilities."].map((item) => <WorkItem key={item} title={item} accent="green" />)}
+      </DarkPanel>
+    </section>
+  );
+}
+
 function App() {
-  const initialUrlToken = new URLSearchParams(window.location.search).get("session");
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialUrlToken = initialParams.get("session");
+  const initialPage = initialParams.get("page") || "Executive Dashboard";
   const [data, setData] = useState(initialData);
   const [apiStates, setApiStates] = useState({});
   const [authToken, setAuthToken] = useState(() => initialUrlToken || localStorage.getItem("pardha_session") || "");
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [activeTab, setActiveTab] = useState("Executive Conversation");
+  const [activeTab, setActiveTab] = useState(initialPage);
   const [activeBusinessId, setActiveBusinessId] = useState("");
   const [prompt, setPrompt] = useState("Improve customer retention by 15%");
   const [businessName, setBusinessName] = useState("");
@@ -410,7 +791,9 @@ function App() {
   useEffect(() => {
     if (initialUrlToken) {
       localStorage.setItem("pardha_session", initialUrlToken);
-      window.history.replaceState({}, "", window.location.pathname);
+      const next = new URL(window.location.href);
+      next.searchParams.delete("session");
+      window.history.replaceState({}, "", `${next.pathname}${next.search}`);
     }
   }, [initialUrlToken]);
 
@@ -1081,34 +1464,25 @@ function App() {
   const recentFlow = useMemo(() => data.collaborations.slice(0, 12).sort((a, b) => new Date(b.created_at || b.timestamp) - new Date(a.created_at || a.timestamp)), [data.collaborations]);
   const connectorFailures = data.connectors.filter((item) => !item.connected);
 
-  const tabs = {
-    "Executive Conversation": <AskPardhaTab data={data} activeBusiness={activeBusiness} activeConversationId={conversationId} messages={chatMessages} conversations={data.conversations} timeline={conversationTimeline} input={chatInput} setInput={setChatInput} onSend={sendConversationMessage} working={working} voiceState={voiceState} interimTranscript={interimTranscript} streamingEvents={streamingEvents} onVoiceStart={startVoice} onVoiceStop={stopVoice} onOpenConversation={openConversation} onPatchConversation={patchConversation} onDeleteConversation={deleteConversationAction} onExportConversation={exportConversationAction} />,
-    Founder: <FounderTab data={data} activeBusiness={activeBusiness} conversations={data.conversations} onPrompt={(promptText) => { setActiveTab("Executive Conversation"); setChatInput(promptText); }} />,
-    Goals: <GoalsTab goals={data.founderGoals} title={goalTitle} setTitle={setGoalTitle} onCreate={createFounderGoal} working={working} />,
-    Planning: <PlanningTab goals={data.planningGoals} plans={data.executionPlans} approvals={data.planApprovals} onApprove={approvePlan} onReject={rejectPlan} onExecute={executePlan} working={working} />,
-    Runtime: <RuntimeTab dashboard={data.runtimeDashboard} plans={data.executionPlans} executions={data.runtimeExecutions} queue={data.runtimeQueue} notifications={data.runtimeNotifications} departments={data.runtimeDepartments} onStart={startRuntimeExecution} onProcess={processRuntimeQueue} onRollback={rollbackRuntimeExecution} working={working} />,
-    "Product Factory": <SoftwareFactoryTab deliveries={data.softwareFactoryDeliveries} dashboard={data.softwareFactoryDashboard} validation={data.softwareFactoryValidation} requirement={factoryRequirement} setRequirement={setFactoryRequirement} onCreate={createFactoryDelivery} onDecide={decideFactoryApproval} working={working} />,
-    Enterprise: <EnterpriseTab dashboard={data.enterpriseDashboard} admin={data.enterpriseAdmin} validation={data.enterpriseValidation} security={data.enterpriseSecurity} observability={data.enterpriseObservability} rbac={data.enterpriseRbac} billing={data.enterpriseBilling} integrations={data.enterpriseIntegrations} deployment={data.enterpriseDeployment} flags={data.enterpriseFlags} audit={data.enterpriseAudit} governance={data.enterpriseGovernance} tenants={data.enterpriseTenants} />,
-    "Executive Command": <ExecutiveCommandTab command={data.executiveCommand} />,
-    Help: <HelpTab help={data.chiefHelp} capabilities={data.capabilities} connectors={data.connectors} businesses={data.businesses} activeBusiness={activeBusiness} runtime={data.runtimeDashboard} onPrompt={(promptText) => { setActiveTab("Executive Conversation"); setChatInput(promptText); }} />,
-    Capabilities: <CapabilitiesTab capabilities={data.capabilities} health={data.capabilityHealth} graph={data.capabilityGraph} validation={data.capabilityValidation} />,
-    "Founder Copilot": <FounderCopilotTab copilot={copilot} bi={data.businessIntelligence} health={data.businessHealth} prompt={prompt} setPrompt={setPrompt} onRun={runCopilot} working={working} />,
-    "Customer Success": <CustomerSuccessTab workspace={data.customerWorkspace} briefs={data.executiveBriefs} onOnboard={onboardCustomer} working={working} />,
-    "Business Health": <BusinessHealthTab health={data.businessHealth} readiness={data.commercialReadiness} />,
-    Presentation: <PresentationTab presentation={data.presentation} demoLibrary={data.demoLibrary} onLoadDemo={loadDemoWorkspace} working={working} />,
-    Sales: <SalesTab dashboard={data.salesDashboard} leads={data.salesLeads} pipeline={data.salesPipeline} demos={data.salesDemos} summary={data.salesSummary} request={salesRequest} setRequest={setSalesRequest} onGenerate={generateProspects} onViewOutreach={viewSalesOutreach} onScheduleDemo={scheduleSalesDemo} onMoveStage={moveSalesStage} working={working} />,
-    Marketing: <MarketingTab dashboard={data.marketingDashboard} campaigns={data.marketingCampaigns} analytics={data.marketingAnalytics} content={data.marketingContent} summary={data.marketingSummary} request={marketingRequest} setRequest={setMarketingRequest} onLaunch={launchMarketingCampaign} working={working} />,
-    CEO: <BriefPanel title="CEO" badge="Strategy" items={data.ceo?.recommendations} risks={data.ceo?.risks} />,
-    PM: <BriefPanel title="PM" badge="Product" items={data.pm?.top_priorities} risks={data.pm?.risks} />,
-    CTO: <BriefPanel title="CTO" badge="Engineering" items={data.cto?.recommended_actions} risks={data.cto?.infrastructure_risks} />,
-    Operations: <OperationsTab data={data} connectorFailures={connectorFailures} />,
-    Projects: <ProjectsTab projects={data.projects} jiraIssues={data.jiraIssues} />,
+  const openAsk = (promptText = "") => {
+    setActiveTab("Ask Pardha");
+    if (promptText) setChatInput(promptText);
+  };
+
+  const pages = {
+    "Executive Dashboard": <ExecutiveDashboardPage user={user} data={data} activeBusiness={activeBusiness} onAsk={openAsk} onVoice={startVoice} onApprove={approvePlan} onReject={rejectPlan} working={working} voiceState={voiceState} />,
+    "Ask Pardha": <AskPardhaTab data={data} activeBusiness={activeBusiness} activeConversationId={conversationId} messages={chatMessages} conversations={data.conversations} timeline={conversationTimeline} input={chatInput} setInput={setChatInput} onSend={sendConversationMessage} working={working} voiceState={voiceState} interimTranscript={interimTranscript} streamingEvents={streamingEvents} onVoiceStart={startVoice} onVoiceStop={stopVoice} onOpenConversation={openConversation} onPatchConversation={patchConversation} onDeleteConversation={deleteConversationAction} onExportConversation={exportConversationAction} />,
+    Businesses: <BusinessesPage data={data} activeBusiness={activeBusiness} businessName={businessName} setBusinessName={setBusinessName} createBusiness={createBusiness} switchBusiness={switchBusiness} working={working} />,
+    Agents: <AgentsPage data={data} />,
     Knowledge: <KnowledgeTab knowledge={data.knowledge} imports={data.knowledgeImports} onSubmit={addKnowledge} title={knowledgeTitle} setTitle={setKnowledgeTitle} content={knowledgeContent} setContent={setKnowledgeContent} files={knowledgeFiles} setFiles={setKnowledgeFiles} onUpload={uploadKnowledgeFiles} onDelete={deleteKnowledgeItem} search={knowledgeSearch} setSearch={setKnowledgeSearch} selected={selectedKnowledge} setSelected={setSelectedKnowledge} working={working} />,
-    Objectives: <ObjectivesTab objectives={data.objectives} flow={recentFlow} />,
-    Tasks: <TasksTab tasks={data.tasks} />,
-    Executions: <ExecutionsTab executions={data.executions} agents={data.agents} />,
-    "System Health": <SystemHealthTab health={data.systemHealth} diagnostics={data.diagnostics} ollama={data.ollama} />,
-    "Connector Status": <ConnectorsTab connectors={data.connectors} onTest={testConnector} />,
+    Marketing: <MarketingTab dashboard={data.marketingDashboard} campaigns={data.marketingCampaigns} analytics={data.marketingAnalytics} content={data.marketingContent} summary={data.marketingSummary} request={marketingRequest} setRequest={setMarketingRequest} onLaunch={launchMarketingCampaign} working={working} />,
+    Sales: <SalesTab dashboard={data.salesDashboard} leads={data.salesLeads} pipeline={data.salesPipeline} demos={data.salesDemos} summary={data.salesSummary} request={salesRequest} setRequest={setSalesRequest} onGenerate={generateProspects} onViewOutreach={viewSalesOutreach} onScheduleDemo={scheduleSalesDemo} onMoveStage={moveSalesStage} working={working} />,
+    "Product Factory": <SoftwareFactoryTab deliveries={data.softwareFactoryDeliveries} dashboard={data.softwareFactoryDashboard} validation={data.softwareFactoryValidation} requirement={factoryRequirement} setRequirement={setFactoryRequirement} onCreate={createFactoryDelivery} onDecide={decideFactoryApproval} working={working} />,
+    Operations: <RuntimeTab dashboard={data.runtimeDashboard} plans={data.executionPlans} executions={data.runtimeExecutions} queue={data.runtimeQueue} notifications={data.runtimeNotifications} departments={data.runtimeDepartments} onStart={startRuntimeExecution} onProcess={processRuntimeQueue} onRollback={rollbackRuntimeExecution} working={working} />,
+    Integrations: <IntegrationsPage connectors={data.connectors} enterpriseIntegrations={data.enterpriseIntegrations} jiraStatus={data.jiraStatus} onTest={testConnector} />,
+    Analytics: <AnalyticsPage data={data} />,
+    Founder: <FounderPage data={data} onAsk={openAsk} />,
+    Settings: <SettingsPage data={data} diagnostics={data.diagnostics} failures={failures} />,
   };
 
   if (!authChecked) {
@@ -1120,88 +1494,26 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen ${theme === "dark" ? "bg-[#101315] text-white" : ""}`}>
-      <header className="sticky top-0 z-30 border-b border-ink/10 bg-canvas/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1540px] items-center gap-3 px-4 py-3 md:px-8">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-acid"><Icon name="command" /></span>
-            <div><p className="font-display text-lg font-bold">Pardha</p><p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-ink/35">Commercial MVP</p></div>
-          </div>
-          <select value={activeBusinessId} onChange={(event) => switchBusiness(event.target.value)} className="ml-auto max-w-[14rem] rounded-full border border-ink/10 bg-white px-3 py-2 text-xs font-bold outline-none">
-            {data.businesses.map((business) => <option key={business.business_id} value={business.business_id}>{business.business_name}</option>)}
-          </select>
-          <ShellButton onClick={loadDP360Demo} disabled={working}>Load DP360 Demo</ShellButton>
-          <ShellButton onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "Light" : "Dark"}</ShellButton>
-          <ShellButton onClick={logoutUser}>Logout</ShellButton>
-          <button onClick={refresh} className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white" aria-label="Refresh dashboard"><Icon name="refresh" /></button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1540px] px-4 py-6 md:px-8">
-        {failures.length > 0 && <div className="mb-5 rounded-2xl border border-coral/20 bg-coral/10 px-4 py-3 text-sm font-semibold text-coral">{failures.length} dashboard API request{failures.length === 1 ? "" : "s"} failed. Open System Health for details.</div>}
-        {notice && <div className="mb-5 rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">{notice}</div>}
-
-        <MissionLanding
-          user={user}
-          data={data}
-          activeBusiness={activeBusiness}
-          voiceState={voiceState}
-          onBrief={() => {
-            setActiveTab("Executive Conversation");
-            setChatInput("Generate today's executive briefing.");
-          }}
-          onOpenConversation={() => setActiveTab("Executive Conversation")}
-        />
-
-        <section className="mb-6 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-3xl bg-ink p-7 text-white">
-            <p className="mb-8 text-xs font-bold uppercase tracking-[0.18em] text-white/45">Good Morning, {user.full_name} / {activeBusiness?.business_name || "Loading"}</p>
-            <h1 className="max-w-5xl font-display text-4xl font-semibold leading-tight md:text-5xl">{loading ? "Loading Pardha command center..." : data.founder?.ceo_summary || "Pardha is ready for customer operating context."}</h1>
-            <form onSubmit={runCopilot} className="mt-8 flex flex-col gap-3 rounded-2xl bg-white/10 p-2 sm:flex-row">
-              <input value={prompt} onChange={(event) => setPrompt(event.target.value)} className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white px-4 text-sm font-medium text-ink outline-none" aria-label="Business objective" />
-              <button disabled={working || !activeBusiness} className="inline-flex items-center justify-center gap-2 rounded-xl bg-acid px-5 py-3 text-sm font-bold text-ink disabled:opacity-60">Create objective <Icon name="arrow" /></button>
-            </form>
-            {copilot && <p className="mt-4 text-sm text-acid">Generated {copilot.workflow.tasks.length} tasks for {copilot.business_name}</p>}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <StateCard title="API" ok={!failures.length} value={failures.length ? `${failures.length} failing` : "healthy"} detail="All dashboard endpoints are checked every refresh cycle." />
-            <StateCard title="Database" ok={Boolean(data.diagnostics?.connected)} value={data.systemHealth?.database?.database_type || "unknown"} detail={data.diagnostics?.database_name || "No database reported"} />
-            <StateCard title="Scheduler" ok={data.diagnostics?.scheduler_status === "running"} value={data.diagnostics?.scheduler_status || "unknown"} detail="Background agent cycles remain deterministic." />
-            <StateCard title="Connectors" ok={connectorFailures.length === 0} value={`${data.connectors.length - connectorFailures.length}/${data.connectors.length} ready`} detail={connectorFailures.length ? "Some connectors need credentials." : "All connectors ready."} />
-          </div>
-        </section>
-
-        <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          <Metric title="Businesses" value={data.businesses.length || "..."} detail="workspaces" />
-          <Metric title="Objectives" value={counts.objectives ?? data.objectives.length} detail="active operating goals" />
-          <Metric title="Tasks" value={counts.tasks ?? data.tasks.length} detail={`${counts.open_tasks ?? openTasks.length} open`} />
-          <Metric title="Knowledge" value={counts.knowledge ?? data.knowledge.length} detail="business context records" />
-          <Metric title="Executions" value={counts.executions ?? data.executions.length} detail="agent run history" />
-          <Metric title="Sales" value={data.salesSummary?.prospects || 0} detail={`${data.salesSummary?.upcoming_demos || 0} demos`} />
-          <Metric title="Marketing" value={data.marketingSummary?.active_campaigns || 0} detail={`${data.marketingSummary?.leads || 0} leads`} />
-        </section>
-
-        <section className="mb-6 grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
-          <Panel title="Create business" subtitle="Start a customer workspace without leaving the dashboard.">
-            <form onSubmit={createBusiness} className="flex gap-2">
-              <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} className="min-h-10 flex-1 rounded-xl border border-ink/10 bg-white px-3 text-sm outline-none" placeholder="New business name" />
-              <ShellButton dark disabled={working}><Icon name="plus" />Create</ShellButton>
-            </form>
-          </Panel>
-          <Panel title="Guided customer journey" subtitle="Commercial demo path from business selection to dashboard update.">
-            <div className="grid gap-3 md:grid-cols-4">
-              {(data.journey?.steps || []).map((step) => <div key={step.step} className={`rounded-xl border px-3 py-3 ${step.status === "complete" ? "border-green-100 bg-green-50" : "border-ink/10 bg-white"}`}><p className="text-[0.65rem] font-bold uppercase tracking-wider text-ink/40">Step {step.step}</p><p className="mt-1 text-sm font-semibold">{step.title}</p><p className="mt-1 text-xs leading-5 text-ink/45">{short(step.detail, 90)}</p></div>)}
-            </div>
-          </Panel>
-        </section>
-
-        <nav className="mb-5 flex gap-2 overflow-x-auto">
-          {Object.keys(tabs).map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold ${activeTab === tab ? "bg-ink text-white" : "bg-white text-ink/55"}`}>{tab}</button>)}
-        </nav>
-
-        {tabs[activeTab]}
-      </main>
-    </div>
+    <WorkspaceShell
+      user={user}
+      activePage={activeTab}
+      setActivePage={setActiveTab}
+      activeBusinessId={activeBusinessId}
+      businesses={data.businesses}
+      onSwitchBusiness={switchBusiness}
+      onRefresh={refresh}
+      onLogout={logoutUser}
+      onLoadDemo={loadDP360Demo}
+      working={working}
+      notice={notice}
+      failures={failures}
+      lastUpdated={lastUpdated}
+      voiceState={voiceState}
+      onVoiceStart={startVoice}
+      onVoiceStop={stopVoice}
+    >
+      {pages[activeTab] || pages["Executive Dashboard"]}
+    </WorkspaceShell>
   );
 }
 

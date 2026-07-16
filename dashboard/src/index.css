@@ -14,7 +14,12 @@
   }
 
   body {
-    @apply m-0 bg-canvas font-sans text-ink antialiased;
+    @apply m-0 bg-[#070b12] font-sans text-ink antialiased;
+  }
+
+  #root {
+    min-height: 100vh;
+    background: #070b12;
   }
 
   ::selection {
@@ -24,19 +29,19 @@
 
 @layer components {
   .panel {
-    @apply rounded-[1.75rem] border border-ink/10 bg-white shadow-card;
+    @apply rounded-[1.75rem] border border-slate-800 bg-slate-950/70 shadow-card;
   }
 
   .eyebrow {
-    @apply font-display text-[0.68rem] font-bold uppercase tracking-[0.2em] text-ink/45;
+    @apply font-display text-[0.68rem] font-bold uppercase tracking-[0.2em] text-slate-500;
   }
 
   .section-title {
-    @apply font-display text-2xl font-semibold tracking-[-0.04em] md:text-3xl;
+    @apply font-display text-2xl font-semibold tracking-[-0.02em] text-white md:text-3xl;
   }
 
   .nav-link {
-    @apply whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold text-ink/55 transition hover:bg-white hover:text-ink;
+    @apply whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold text-slate-400 transition hover:bg-slate-900 hover:text-white;
   }
 }
 
