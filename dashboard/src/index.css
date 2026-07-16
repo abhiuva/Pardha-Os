@@ -76,6 +76,28 @@
   66% { transform: scaleX(0.94) scaleY(1.08); }
 }
 
+@keyframes voice-wake {
+  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); transform: scale(0.96); }
+  100% { box-shadow: 0 0 0 18px rgba(139, 92, 246, 0); transform: scale(1); }
+}
+
+@keyframes voice-listening {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55), 0 0 34px rgba(139, 92, 246, 0.45); }
+  50% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0), 0 0 54px rgba(34, 211, 238, 0.55); }
+}
+
+@keyframes voice-thinking {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.06); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.voice-orb-wake { animation: voice-wake 0.8s ease-out infinite; }
+.voice-orb-listening, .voice-orb-transcribing { animation: voice-listening 1.25s ease-in-out infinite; }
+.voice-orb-thinking, .voice-orb-planning, .voice-orb-executing { animation: voice-thinking 1.6s linear infinite; }
+.voice-orb-speaking { animation: orb-speaking 0.8s ease-in-out infinite; }
+.voice-orb-error { background: #fb7185; box-shadow: 0 0 36px rgba(251, 113, 133, 0.45); }
+
 .mission-surface {
   background:
     radial-gradient(circle at 20% 20%, rgba(199, 243, 107, 0.18), transparent 28%),

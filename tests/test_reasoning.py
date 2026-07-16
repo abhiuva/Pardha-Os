@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.db import SessionLocal, init_db
 from app.db.models import AgentReasoning as AgentReasoningModel
 from app.main import app
-from app.reasoning.client import OllamaUnavailable, ensure_ollama_running, generate_response
+from app.reasoning.client import OllamaUnavailable, ensure_ollama_running, generate_response, switch_model
 from app.reasoning.service import get_reasoning, reason_for_agent
 
 
@@ -20,6 +20,7 @@ class ReasoningTestCase(unittest.TestCase):
         cls.client = TestClient(app)
 
     def setUp(self):
+        switch_model("qwen3:8b")
         with SessionLocal() as session:
             session.query(AgentReasoningModel).delete()
             session.commit()
@@ -35,7 +36,7 @@ class ReasoningTestCase(unittest.TestCase):
         reasoning = reason_for_agent("ceo", "fallback")
 
         self.assertEqual(reasoning.source, "ollama")
-        self.assertEqual(reasoning.model, "llama3.2:3b")
+        self.assertEqual(reasoning.model, "qwen3:8b")
         self.assertIn("three-school pilot", reasoning.response)
         self.assertIn("strategic analysis", reasoning.prompt)
         generate_response.assert_called_once()
@@ -70,9 +71,9 @@ class ReasoningTestCase(unittest.TestCase):
         response = self.client.post("/agents/ceo/reason")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["model"], "llama3.2:3b")
+        self.assertEqual(response.json()["model"], "qwen3:8b")
         self.assertEqual(response.json()["source"], "ollama")
-        self.assertEqual(generate.call_args.args[2], "llama3.2:3b")
+        self.assertEqual(generate.call_args.args[2], "qwen3:8b")
 
     @patch("app.reasoning.service.build_business_context", return_value='{"active_objectives": []}')
     @patch("app.reasoning.service.generate_response", return_value="Advanced CTO recommendation.")
@@ -108,8 +109,9 @@ class ReasoningTestCase(unittest.TestCase):
 
         self.assertEqual(response, "Resource controlled.")
         payload = request.call_args.args[1]
-        self.assertEqual(payload["model"], "llama3.2:3b")
-        self.assertEqual(payload["keep_alive"], 0)
+        self.assertEqual(payload["model"], "qwen3:8b")
+        self.assertEqual(payload["keep_alive"], "90s")
+        self.assertEqual(payload["options"]["num_ctx"], 4096)
 
     @patch("app.reasoning.client._enabled", return_value=True)
     def test_only_one_reasoning_request_runs_at_a_time(self, _enabled):
@@ -156,10 +158,27 @@ class ReasoningTestCase(unittest.TestCase):
         response = self.client.get("/system/ollama/status")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["model"], "llama3.2:3b")
+        self.assertEqual(response.json()["model"], "qwen3:8b")
         self.assertIn(response.json()["state"], {"Running", "Idle", "Disabled"})
         self.assertEqual(response.json()["max_concurrent_reasoning"], 1)
         self.assertIn("connected", response.json())
+        self.assertIn("latency_ms", response.json())
+        self.assertEqual(response.json()["context_size"], 4096)
+
+    @patch("app.reasoning.client._enabled", return_value=True)
+    @patch("app.reasoning.client._request", return_value={"models": [{"name": "qwen3:8b"}]})
+    def test_model_manager_switch_endpoint(self, _request, _enabled):
+        response = self.client.post("/system/ollama/switch", json={"model": "llama3.2:3b"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["model"], "llama3.2:3b")
+
+    def test_voice_runtime_validation_runs_100_scenarios(self):
+        response = self.client.get("/conversations/voice-validation")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["scenarios_run"], 100)
+        self.assertIn("microphone", response.json()["categories"])
 
 
 if __name__ == "__main__":

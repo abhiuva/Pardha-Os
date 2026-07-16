@@ -6,6 +6,7 @@ const endpoints = {
   health: "/api/",
   diagnostics: "/api/system/database/status",
   ollama: "/api/system/ollama/status",
+  voiceValidation: "/api/conversations/voice-validation",
   systemHealth: "/api/commercial/system/health",
   connectors: "/api/commercial/connectors/status",
   founder: "/api/commercial/founder-dashboard",
@@ -81,12 +82,19 @@ const endpoints = {
   jiraIssues: "/api/jira/issues",
 };
 
+const modelManagerEndpoints = {
+  start: "/api/system/ollama/start",
+  stop: "/api/system/ollama/stop",
+  switch: "/api/system/ollama/switch",
+};
+
 const businessScoped = new Set(["founder", "journey", "ceo", "cto", "pm", "objectives", "collaborations", "tasks", "projects", "knowledge", "events", "executions", "businessIntelligence", "customerWorkspace", "executiveBriefs", "businessHealth", "presentation", "chiefConversations", "conversations", "founderGoals", "executiveCommand", "planningGoals", "executionPlans", "planApprovals", "runtimeDashboard", "runtimeExecutions", "runtimeQueue", "runtimeNotifications", "runtimeDepartments", "softwareFactoryDeliveries", "softwareFactoryDashboard", "softwareFactoryValidation"]);
 
 const initialData = {
   health: null,
   diagnostics: null,
   ollama: null,
+  voiceValidation: null,
   systemHealth: null,
   connectors: [],
   founder: null,
@@ -398,7 +406,7 @@ const navItems = [
   ["Settings", "settings"],
 ];
 
-function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, businesses, onSwitchBusiness, onRefresh, onLogout, onLoadDemo, working, notice, failures, lastUpdated, children, voiceState, onVoiceStart, onVoiceStop }) {
+function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, businesses, onSwitchBusiness, onRefresh, onLogout, onLoadDemo, working, notice, failures, lastUpdated, children, voiceState, onVoiceStart, onVoiceStop, continuousVoice, onToggleContinuousVoice, voiceError, interimTranscript, ollama, voiceValidation, onModelStart, onModelStop, onModelSwitch }) {
   return (
     <div className="min-h-screen bg-[#070b12] text-slate-100">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[18.75rem] border-r border-slate-800/90 bg-[#0b111b] px-3 py-6 lg:block">
@@ -445,14 +453,28 @@ function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, bus
             </button>
           </div>
         </header>
-        <div className="px-4 py-6 md:px-8">
+        <div className="px-4 py-6 pb-96 md:px-8 xl:pr-[25rem]">
           {failures.length > 0 && <div className="mb-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-200">{failures.length} live endpoint{failures.length === 1 ? "" : "s"} need attention. Review Integrations or Settings.</div>}
           {notice && <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">{notice}</div>}
           {children}
           <p className="mt-8 text-xs text-slate-600">{lastUpdated ? `Updated ${relativeTime(lastUpdated)}` : "Waiting for first refresh"}</p>
         </div>
       </main>
-      <FloatingVoice state={voiceState} onStart={onVoiceStart} onStop={onVoiceStop} />
+      <ExecutiveVoiceRuntime
+        state={voiceState}
+        moduleContext={activePage}
+        onStart={onVoiceStart}
+        onStop={onVoiceStop}
+        continuous={continuousVoice}
+        onToggleContinuous={onToggleContinuousVoice}
+        error={voiceError}
+        transcript={interimTranscript}
+        ollama={ollama}
+        validation={voiceValidation}
+        onModelStart={onModelStart}
+        onModelStop={onModelStop}
+        onModelSwitch={onModelSwitch}
+      />
     </div>
   );
 }
@@ -500,14 +522,48 @@ function WorkItem({ title, detail, accent = "violet", action }) {
   );
 }
 
-function FloatingVoice({ state, onStart, onStop }) {
+function ExecutiveVoiceRuntime({ state, moduleContext, onStart, onStop, continuous, onToggleContinuous, error, transcript, ollama, validation, onModelStart, onModelStop, onModelSwitch }) {
   const active = !["idle", "completed"].includes(state);
+  const model = ollama?.model || "qwen3:8b";
   return (
-    <div className="fixed bottom-5 right-5 z-50">
-      <button onClick={active ? onStop : onStart} className="grid h-16 w-16 place-items-center rounded-full border border-violet-300/30 bg-violet-500 text-white shadow-[0_0_46px_rgba(139,92,246,0.55)]" aria-label="Floating voice assistant">
-        <Icon name="mic" className="h-6 w-6" />
-      </button>
-      <p className="mt-2 text-center text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">{label(state)}</p>
+    <div className="fixed bottom-5 right-5 z-50 w-[22rem] max-w-[calc(100vw-2rem)] rounded-[1.5rem] border border-violet-300/25 bg-slate-950/95 p-4 text-slate-100 shadow-[0_0_60px_rgba(139,92,246,0.28)] backdrop-blur">
+      <div className="flex items-start gap-3">
+        <button onClick={active ? onStop : onStart} className={`grid h-16 w-16 shrink-0 place-items-center rounded-full border border-violet-300/30 bg-violet-500 text-white shadow-[0_0_46px_rgba(139,92,246,0.55)] voice-orb-${state}`} aria-label="Executive voice assistant">
+          <Icon name="mic" className="h-6 w-6" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Executive Voice</p>
+            <span className="rounded-full bg-violet-400/15 px-2.5 py-1 text-[0.62rem] font-bold uppercase text-violet-200">{label(state)}</span>
+          </div>
+          <p className="mt-2 truncate text-sm font-bold text-white">{moduleContext}</p>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{error || transcript || "Push to talk, or enable continuous mode."}</p>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <button onClick={onStart} disabled={active} className="min-h-9 rounded-xl bg-cyan-400 px-3 text-xs font-bold text-slate-950 disabled:opacity-40">Talk</button>
+        <button onClick={onStop} className="min-h-9 rounded-xl border border-slate-800 bg-slate-900 px-3 text-xs font-bold text-slate-200">Interrupt</button>
+        <button onClick={onToggleContinuous} className={`min-h-9 rounded-xl px-3 text-xs font-bold ${continuous ? "bg-emerald-400 text-slate-950" : "border border-slate-800 bg-slate-900 text-slate-200"}`}>Continuous</button>
+      </div>
+      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-bold text-white">{model}</p>
+          <select value={model} onChange={(event) => onModelSwitch(event.target.value)} className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 outline-none">
+            {["qwen3:8b", "llama3.2:3b", ...(ollama?.available_models || [])].filter((item, index, all) => item && all.indexOf(item) === index).map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[0.68rem] text-slate-500">
+          <p>Reasoning: <span className="text-slate-300">{ollama?.reasoning_status || "unknown"}</span></p>
+          <p>Latency: <span className="text-slate-300">{ollama?.latency_ms ?? "n/a"}ms</span></p>
+          <p>Tokens: <span className="text-slate-300">{ollama?.tokens ?? "n/a"}</span></p>
+          <p>Context: <span className="text-slate-300">{ollama?.context_size || 0}</span></p>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button onClick={() => onModelStart(model)} className="min-h-8 rounded-lg bg-violet-500 px-3 text-xs font-bold text-white">Start model</button>
+          <button onClick={() => onModelStop(model)} className="min-h-8 rounded-lg border border-slate-800 px-3 text-xs font-bold text-slate-300">Stop</button>
+        </div>
+        <p className="mt-3 text-[0.68rem] text-slate-500">Validation: {validation?.scenarios_run || 0} scenarios / score {validation?.score ?? "n/a"}</p>
+      </div>
     </div>
   );
 }
@@ -769,11 +825,15 @@ function App() {
   const [conversationId, setConversationId] = useState("");
   const [conversationTimeline, setConversationTimeline] = useState([]);
   const [voiceState, setVoiceState] = useState("idle");
+  const [voiceError, setVoiceError] = useState("");
+  const [continuousVoice, setContinuousVoice] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [streamingEvents, setStreamingEvents] = useState([]);
   const recognitionRef = useRef(null);
+  const startVoiceRef = useRef(null);
   const voiceTranscriptRef = useRef("");
   const voiceSubmittedRef = useRef(false);
+  const continuousVoiceRef = useRef(false);
   const [goalTitle, setGoalTitle] = useState("Acquire 5 eCommerce Pilot Customers");
   const [factoryRequirement, setFactoryRequirement] = useState("We need QR tracking.");
   const [copilot, setCopilot] = useState(null);
@@ -787,6 +847,10 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const activeBusiness = data.businesses.find((business) => business.business_id === activeBusinessId) || data.currentContext?.active_business;
+
+  useEffect(() => {
+    continuousVoiceRef.current = continuousVoice;
+  }, [continuousVoice]);
 
   useEffect(() => {
     if (initialUrlToken) {
@@ -1122,8 +1186,15 @@ function App() {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.96;
     utterance.pitch = 0.92;
-    utterance.onend = () => setVoiceState("completed");
-    utterance.onerror = () => setVoiceState("completed");
+    utterance.onend = () => {
+      setVoiceState("completed");
+      if (continuousVoiceRef.current) setTimeout(() => startVoiceRef.current?.(), 600);
+    };
+    utterance.onerror = () => {
+      setVoiceState("error");
+      setVoiceError("Speech output failed. You can continue by text or restart voice.");
+      if (continuousVoiceRef.current) setTimeout(() => startVoiceRef.current?.(), 1200);
+    };
     window.speechSynthesis.speak(utterance);
   }, []);
 
@@ -1148,7 +1219,7 @@ function App() {
     const response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ business_id: activeBusiness.business_id, message }),
+      body: JSON.stringify({ business_id: activeBusiness.business_id, message, module_context: activeTab }),
     });
     if (response.ok) {
       if (response.body) {
@@ -1184,7 +1255,7 @@ function App() {
     }
     await refresh();
     setWorking(false);
-  }, [activeBusiness, applyConversationResult, chatInput, conversationId, refresh]);
+  }, [activeBusiness, activeTab, applyConversationResult, chatInput, conversationId, refresh]);
 
   const openConversation = useCallback(async (nextConversationId) => {
     if (!nextConversationId) return;
@@ -1257,37 +1328,41 @@ function App() {
   }, [sendConversationMessage]);
 
   const startVoice = useCallback(async () => {
+    setVoiceError("");
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
-      setNotice("Voice recognition is not available in this browser.");
+      setVoiceError("Speech recognition is not available in this browser.");
+      setVoiceState("error");
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      setNotice("Microphone access is not available in this browser.");
+      setVoiceError("Microphone access is not available in this browser.");
+      setVoiceState("error");
       return;
     }
     if (!activeBusiness) {
-      setNotice("Select a business before using voice.");
+      setVoiceError("Select a business before using voice.");
+      setVoiceState("error");
       return;
     }
     window.speechSynthesis?.cancel?.();
     recognitionRef.current?.abort?.();
     voiceTranscriptRef.current = "";
     voiceSubmittedRef.current = false;
-    setVoiceState("listening");
-    setInterimTranscript("Listening...");
+    setVoiceState("wake");
+    setInterimTranscript(`Wake / ${activeTab}`);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((track) => track.stop());
     } catch (error) {
       const message = error?.name === "NotAllowedError" ? "Microphone permission was denied. Allow microphone access for this site and try again." : `Microphone access failed: ${error?.message || error?.name || "unknown error"}`;
-      setNotice(message);
+      setVoiceError(message);
       setInterimTranscript("");
-      setVoiceState("idle");
+      setVoiceState("error");
       return;
     }
     const recognition = new Recognition();
-    recognition.continuous = false;
+    recognition.continuous = continuousVoiceRef.current;
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.onstart = () => {
@@ -1304,6 +1379,7 @@ function App() {
       }
       const transcript = `${finalText} ${interimText}`.trim();
       voiceTranscriptRef.current = transcript;
+      setVoiceState(finalText.trim() ? "transcribing" : "listening");
       setInterimTranscript(transcript || "Listening...");
       if (finalText.trim()) {
         recognition.stop();
@@ -1311,9 +1387,10 @@ function App() {
       }
     };
     recognition.onerror = (event) => {
-      setNotice(`Voice input failed: ${event.error}`);
+      setVoiceError(`Voice input failed: ${event.error}`);
       setInterimTranscript("");
-      setVoiceState("idle");
+      setVoiceState("error");
+      if (continuousVoiceRef.current && event.error !== "not-allowed") setTimeout(() => startVoiceRef.current?.(), 1200);
     };
     recognition.onend = () => {
       if (!voiceSubmittedRef.current && voiceTranscriptRef.current.trim()) {
@@ -1326,16 +1403,24 @@ function App() {
     try {
       recognition.start();
     } catch (error) {
-      setNotice(`Voice input failed to start: ${error?.message || "unknown error"}`);
+      setVoiceError(`Voice input failed to start: ${error?.message || "unknown error"}`);
       setInterimTranscript("");
-      setVoiceState("idle");
+      setVoiceState("error");
     }
-  }, [activeBusiness, submitVoiceTranscript]);
+  }, [activeBusiness, activeTab, submitVoiceTranscript]);
+
+  useEffect(() => {
+    startVoiceRef.current = startVoice;
+  }, [startVoice]);
 
   const stopVoice = useCallback(() => {
-    recognitionRef.current?.stop?.();
+    recognitionRef.current?.abort?.();
     window.speechSynthesis?.cancel?.();
-    submitVoiceTranscript("stop");
+    voiceSubmittedRef.current = false;
+    voiceTranscriptRef.current = "";
+    setInterimTranscript("");
+    setVoiceState("idle");
+    setVoiceError("");
   }, [submitVoiceTranscript]);
 
   const createFounderGoal = useCallback(async (event) => {
@@ -1458,6 +1543,19 @@ function App() {
     setWorking(false);
   }, [refresh, user]);
 
+  const controlModel = useCallback(async (action, model) => {
+    setWorking(true);
+    const response = await fetch(modelManagerEndpoints[action], {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    });
+    const result = await response.json();
+    setNotice(response.ok ? `${label(result.model)} ${result.status}: ${result.message}` : result.detail || "Unable to update model runtime.");
+    await refresh();
+    setWorking(false);
+  }, [refresh]);
+
   const failures = Object.entries(apiStates).filter(([, state]) => state.state === "error");
   const counts = data.founder?.counts || data.currentContext?.counts || {};
   const openTasks = data.tasks.filter((task) => task.status !== "completed");
@@ -1511,6 +1609,15 @@ function App() {
       voiceState={voiceState}
       onVoiceStart={startVoice}
       onVoiceStop={stopVoice}
+      continuousVoice={continuousVoice}
+      onToggleContinuousVoice={() => setContinuousVoice((current) => !current)}
+      voiceError={voiceError}
+      interimTranscript={interimTranscript}
+      ollama={data.ollama}
+      voiceValidation={data.voiceValidation}
+      onModelStart={(model) => controlModel("start", model)}
+      onModelStop={(model) => controlModel("stop", model)}
+      onModelSwitch={(model) => controlModel("switch", model)}
     >
       {pages[activeTab] || pages["Executive Dashboard"]}
     </WorkspaceShell>

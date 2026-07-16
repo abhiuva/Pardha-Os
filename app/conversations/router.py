@@ -17,6 +17,7 @@ from app.conversations.schemas import (
     ConversationSession,
     ConversationUpdate,
     ConversationValidationReport,
+    VoiceRuntimeValidationReport,
 )
 from app.conversations.service import (
     conversation_hardening_validation,
@@ -31,6 +32,7 @@ from app.conversations.service import (
     send_message,
     stream_events,
     update_conversation,
+    voice_runtime_validation,
 )
 
 router = APIRouter(prefix="/conversations", tags=["conversational-intelligence"])
@@ -63,6 +65,11 @@ def conversation_validation_route():
 @router.get("/hardening-validation", response_model=ConversationHardeningValidationReport)
 def conversation_hardening_validation_route():
     return conversation_hardening_validation()
+
+
+@router.get("/voice-validation", response_model=VoiceRuntimeValidationReport)
+def voice_runtime_validation_route():
+    return voice_runtime_validation()
 
 
 @router.get("/{conversation_id}", response_model=ConversationDetail)

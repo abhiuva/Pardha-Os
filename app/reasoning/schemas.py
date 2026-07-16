@@ -21,5 +21,5 @@ class AgentReasoning(BaseModel):
 
 
 class ReasoningRequest(BaseModel):
-    model: Literal["llama3.2:3b", "qwen3:8b"] = "llama3.2:3b"
+    model: Literal["llama3.2:3b", "qwen3:8b"] = "qwen3:8b"
     business_id: Optional[str] = None

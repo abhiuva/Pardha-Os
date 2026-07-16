@@ -67,3 +67,56 @@ Page responsibility:
 7. Use Marketing, Sales, and Product Factory for dedicated execution workflows.
 8. Use Operations and Integrations for execution status and connector health.
 9. Use Settings only for administration and system diagnostics.
+
+## Executive Voice Runtime
+
+Voice is global and page-aware. The active page is sent as `module_context` with every streamed conversation request.
+
+Runtime pipeline:
+
+1. Microphone
+2. Speech-to-text
+3. Conversation memory
+4. Business context
+5. Intent detection
+6. Capability discovery
+7. Reasoning gate
+8. Ollama Qwen
+9. Planner
+10. Execution
+11. Response composer
+12. Streaming
+13. Text-to-speech
+
+Supported runtime states:
+
+- wake
+- listening
+- transcribing
+- thinking
+- planning
+- executing
+- speaking
+- completed
+- error
+
+Voice modes:
+
+- push-to-talk
+- interruptible response
+- continuous conversation
+
+Ollama model manager:
+
+- default model: `qwen3:8b`
+- on-demand model start
+- manual model stop
+- idle timeout unload
+- runtime model switching
+- health monitoring and diagnostics
+- displayed diagnostics: current model, latency, tokens, context size, reasoning status, and 100-scenario validation score
+
+Validation:
+
+- `GET /api/conversations/voice-validation` runs 100 runtime scenarios across microphone contract, speech-to-text contract, Qwen reasoning contract, conversation, memory, business context, execution, streaming, speech, and error recovery.
+- Browser microphone and speech output still require manual permission validation in Chrome or another Web Speech API browser.

@@ -70,6 +70,7 @@ class ConversationMessageRequest(BaseModel):
     message: str = Field(..., min_length=1)
     business_id: Optional[str] = None
     owner: str = "Founder"
+    module_context: Optional[str] = None
 
 
 class SuggestedAction(BaseModel):
@@ -141,3 +142,13 @@ class ConversationHardeningValidationReport(BaseModel):
     categories: Dict[str, Dict[str, Any]]
     failures: List[Dict[str, Any]]
     policy: Dict[str, bool]
+
+
+class VoiceRuntimeValidationReport(BaseModel):
+    score: int
+    ready: bool
+    scenarios_run: int
+    categories: Dict[str, Dict[str, Any]]
+    failures: List[Dict[str, Any]]
+    pipeline: List[str]
+    browser_requirements: List[str]
