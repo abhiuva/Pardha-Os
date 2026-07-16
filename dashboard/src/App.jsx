@@ -406,7 +406,7 @@ const navItems = [
   ["Settings", "settings"],
 ];
 
-function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, businesses, onSwitchBusiness, onRefresh, onLogout, onLoadDemo, working, notice, failures, lastUpdated, children, voiceState, onVoiceStart, onVoiceStop, continuousVoice, onToggleContinuousVoice, voiceError, interimTranscript, ollama, voiceValidation, onModelStart, onModelStop, onModelSwitch }) {
+function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, businesses, onSwitchBusiness, onRefresh, onLogout, onLoadDemo, working, notice, failures, lastUpdated, children, voiceState, onVoiceStart, onVoiceStop, continuousVoice, onToggleContinuousVoice, voiceError, interimTranscript, ollama, voiceValidation, onModelStart, onModelStop, onModelSwitch, pageOwnsVoice = false }) {
   return (
     <div className="min-h-screen bg-[#070b12] text-slate-100">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[18.75rem] border-r border-slate-800/90 bg-[#0b111b] px-3 py-6 lg:block">
@@ -453,28 +453,30 @@ function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, bus
             </button>
           </div>
         </header>
-        <div className="px-4 py-6 pb-96 md:px-8 xl:pr-[25rem]">
+        <div className={`px-4 py-6 md:px-8 ${pageOwnsVoice ? "pb-8" : "pb-96 xl:pr-[25rem]"}`}>
           {failures.length > 0 && <div className="mb-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-200">{failures.length} live endpoint{failures.length === 1 ? "" : "s"} need attention. Review Integrations or Settings.</div>}
           {notice && <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">{notice}</div>}
           {children}
           <p className="mt-8 text-xs text-slate-600">{lastUpdated ? `Updated ${relativeTime(lastUpdated)}` : "Waiting for first refresh"}</p>
         </div>
       </main>
-      <ExecutiveVoiceRuntime
-        state={voiceState}
-        moduleContext={activePage}
-        onStart={onVoiceStart}
-        onStop={onVoiceStop}
-        continuous={continuousVoice}
-        onToggleContinuous={onToggleContinuousVoice}
-        error={voiceError}
-        transcript={interimTranscript}
-        ollama={ollama}
-        validation={voiceValidation}
-        onModelStart={onModelStart}
-        onModelStop={onModelStop}
-        onModelSwitch={onModelSwitch}
-      />
+      {!pageOwnsVoice && (
+        <ExecutiveVoiceRuntime
+          state={voiceState}
+          moduleContext={activePage}
+          onStart={onVoiceStart}
+          onStop={onVoiceStop}
+          continuous={continuousVoice}
+          onToggleContinuous={onToggleContinuousVoice}
+          error={voiceError}
+          transcript={interimTranscript}
+          ollama={ollama}
+          validation={voiceValidation}
+          onModelStart={onModelStart}
+          onModelStop={onModelStop}
+          onModelSwitch={onModelSwitch}
+        />
+      )}
     </div>
   );
 }
@@ -1573,7 +1575,7 @@ function App() {
     Businesses: <BusinessesPage data={data} activeBusiness={activeBusiness} businessName={businessName} setBusinessName={setBusinessName} createBusiness={createBusiness} switchBusiness={switchBusiness} working={working} />,
     Agents: <AgentsPage data={data} />,
     Knowledge: <KnowledgeTab knowledge={data.knowledge} imports={data.knowledgeImports} onSubmit={addKnowledge} title={knowledgeTitle} setTitle={setKnowledgeTitle} content={knowledgeContent} setContent={setKnowledgeContent} files={knowledgeFiles} setFiles={setKnowledgeFiles} onUpload={uploadKnowledgeFiles} onDelete={deleteKnowledgeItem} search={knowledgeSearch} setSearch={setKnowledgeSearch} selected={selectedKnowledge} setSelected={setSelectedKnowledge} working={working} />,
-    Marketing: <MarketingTab dashboard={data.marketingDashboard} campaigns={data.marketingCampaigns} analytics={data.marketingAnalytics} content={data.marketingContent} summary={data.marketingSummary} request={marketingRequest} setRequest={setMarketingRequest} onLaunch={launchMarketingCampaign} working={working} />,
+    Marketing: <MarketingVoicePage dashboard={data.marketingDashboard} campaigns={data.marketingCampaigns} analytics={data.marketingAnalytics} content={data.marketingContent} summary={data.marketingSummary} request={marketingRequest} setRequest={setMarketingRequest} onLaunch={launchMarketingCampaign} working={working} activeBusiness={activeBusiness} voiceState={voiceState} onVoiceStart={startVoice} onVoiceStop={stopVoice} interimTranscript={interimTranscript} voiceError={voiceError} messages={chatMessages} streamingEvents={streamingEvents} approvals={data.planApprovals} ollama={data.ollama} validation={data.voiceValidation} />,
     Sales: <SalesTab dashboard={data.salesDashboard} leads={data.salesLeads} pipeline={data.salesPipeline} demos={data.salesDemos} summary={data.salesSummary} request={salesRequest} setRequest={setSalesRequest} onGenerate={generateProspects} onViewOutreach={viewSalesOutreach} onScheduleDemo={scheduleSalesDemo} onMoveStage={moveSalesStage} working={working} />,
     "Product Factory": <SoftwareFactoryTab deliveries={data.softwareFactoryDeliveries} dashboard={data.softwareFactoryDashboard} validation={data.softwareFactoryValidation} requirement={factoryRequirement} setRequirement={setFactoryRequirement} onCreate={createFactoryDelivery} onDecide={decideFactoryApproval} working={working} />,
     Operations: <RuntimeTab dashboard={data.runtimeDashboard} plans={data.executionPlans} executions={data.runtimeExecutions} queue={data.runtimeQueue} notifications={data.runtimeNotifications} departments={data.runtimeDepartments} onStart={startRuntimeExecution} onProcess={processRuntimeQueue} onRollback={rollbackRuntimeExecution} working={working} />,
@@ -1618,6 +1620,7 @@ function App() {
       onModelStart={(model) => controlModel("start", model)}
       onModelStop={(model) => controlModel("stop", model)}
       onModelSwitch={(model) => controlModel("switch", model)}
+      pageOwnsVoice={activeTab === "Marketing"}
     >
       {pages[activeTab] || pages["Executive Dashboard"]}
     </WorkspaceShell>
@@ -2379,58 +2382,192 @@ function SalesTab({ dashboard, leads, pipeline, demos, summary, request, setRequ
   );
 }
 
-function MarketingTab({ dashboard, campaigns, analytics, content, summary, request, setRequest, onLaunch, working }) {
-  const shownSummary = dashboard?.summary || summary;
-  const shownCampaigns = dashboard?.active_campaigns || campaigns;
-  const shownPerformance = dashboard?.performance || analytics;
-  const shownContent = dashboard?.content_pipeline || content;
-  const upcoming = dashboard?.upcoming_campaigns || [];
+function MarketingVoicePage({ dashboard, campaigns, analytics, content, summary, request, setRequest, onLaunch, working, activeBusiness, voiceState, onVoiceStart, onVoiceStop, interimTranscript, voiceError, messages, streamingEvents, approvals, ollama, validation }) {
+  const shownSummary = dashboard?.summary || summary || {};
+  const shownCampaigns = dashboard?.active_campaigns || campaigns || [];
+  const shownPerformance = dashboard?.performance || analytics || [];
+  const shownContent = dashboard?.content_pipeline || content || [];
   const recommendations = dashboard?.recommendations || shownSummary?.recommendations || [];
+  const latestUser = [...(messages || [])].reverse().find((message) => message.role === "user");
+  const latestAssistant = [...(messages || [])].reverse().find((message) => message.role !== "user");
+  const active = !["idle", "completed"].includes(voiceState);
+  const totalBudget = shownCampaigns.reduce((sum, campaign) => sum + Number(campaign.budget || 0), 0);
+  const metricRows = [
+    shownSummary.ctr !== undefined && { label: "CTR", value: `${shownSummary.ctr}%`, detail: shownSummary.clicks !== undefined ? `${shownSummary.clicks} clicks` : "" },
+    shownSummary.leads !== undefined && { label: "Leads", value: shownSummary.leads, detail: shownSummary.cpl !== undefined ? `CPL $${shownSummary.cpl}` : "" },
+    shownSummary.roas !== undefined && { label: "ROAS", value: `${shownSummary.roas}x`, detail: "pipeline return" },
+    shownSummary.pipeline_contribution !== undefined && { label: "Pipeline", value: `$${((shownSummary.pipeline_contribution || 0) / 1000).toFixed(0)}k`, detail: "contribution" },
+    totalBudget > 0 && { label: "Budget", value: `$${(totalBudget / 1000).toFixed(1)}k`, detail: `${shownCampaigns.length} campaign${shownCampaigns.length === 1 ? "" : "s"}` },
+  ].filter(Boolean);
+  const timeline = (streamingEvents || []).slice(-5).map((event, index) => ({
+    id: event.id || `${event.type}-${index}`,
+    title: event.message || label(event.type || "runtime event"),
+    detail: label(event.status || event.type || "completed"),
+    state: event.status || event.type || "completed",
+  }));
+  const campaignTimeline = timeline.length ? timeline : shownCampaigns.slice(0, 5).map((campaign) => ({
+    id: campaign.campaign_id,
+    title: campaign.name,
+    detail: label(campaign.status || "active"),
+    state: campaign.status || "active",
+  }));
+  const suggestedPrompts = [
+    shownCampaigns.length ? "Analyse current campaign performance." : "",
+    shownContent.length ? "Summarise content pipeline." : "",
+    recommendations[0] ? String(recommendations[0]) : "",
+  ].filter(Boolean).slice(0, 3);
+  const statusColor = {
+    idle: "text-slate-400 bg-slate-800/80",
+    wake: "text-violet-200 bg-violet-400/15",
+    listening: "text-cyan-200 bg-cyan-400/15",
+    transcribing: "text-cyan-200 bg-cyan-400/15",
+    thinking: "text-violet-200 bg-violet-400/15",
+    planning: "text-violet-200 bg-violet-400/15",
+    executing: "text-amber-200 bg-amber-400/15",
+    speaking: "text-emerald-200 bg-emerald-400/15",
+    error: "text-rose-200 bg-rose-400/15",
+  };
   return (
-    <section className="grid gap-5">
-      <Panel title="Marketing Executive" subtitle="Launch demand generation campaigns, content, calendar, ads, email, and analytics.">
-        <div className="flex flex-col gap-3 md:flex-row">
-          <input value={request} onChange={(event) => setRequest(event.target.value)} className="min-h-11 flex-1 rounded-xl border border-ink/10 px-4 text-sm outline-none" />
-          <ShellButton dark disabled={working} onClick={onLaunch}>Launch campaign</ShellButton>
+    <section className="grid gap-6 text-slate-100">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <h2 className="font-display text-4xl font-semibold text-white">Marketing Agent</h2>
+          <p className="mt-2 text-base text-slate-500">Plan, create and execute campaigns through conversation.</p>
         </div>
-      </Panel>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <Metric title="Campaigns" value={shownSummary?.active_campaigns || 0} detail="active" />
-        <Metric title="Content" value={shownSummary?.content_assets || 0} detail="assets generated" />
-        <Metric title="CTR" value={`${shownSummary?.ctr || 0}%`} detail={`${shownSummary?.clicks || 0} clicks`} />
-        <Metric title="Leads" value={shownSummary?.leads || 0} detail={`CPL $${shownSummary?.cpl || 0}`} />
-        <Metric title="ROAS" value={`${shownSummary?.roas || 0}x`} detail="pipeline return" />
-        <Metric title="Pipeline" value={`$${((shownSummary?.pipeline_contribution || 0) / 1000).toFixed(0)}k`} detail="contribution" />
+        <div className="flex flex-wrap gap-3">
+          <span className="inline-flex min-h-10 items-center rounded-full bg-emerald-400/15 px-4 text-sm font-bold uppercase text-emerald-300"><span className="mr-2 h-2.5 w-2.5 rounded-full bg-emerald-400" />Healthy</span>
+          {shownCampaigns.length > 0 && <span className="inline-flex min-h-10 items-center rounded-full bg-slate-900 px-4 text-sm font-bold uppercase text-slate-200">{shownCampaigns.length} campaign{shownCampaigns.length === 1 ? "" : "s"}</span>}
+          {shownSummary.leads !== undefined && <span className="inline-flex min-h-10 items-center rounded-full bg-slate-900 px-4 text-sm font-bold uppercase text-slate-200">{shownSummary.leads} lead{shownSummary.leads === 1 ? "" : "s"}</span>}
+          <span className="inline-flex min-h-10 items-center rounded-full bg-violet-500/25 px-4 text-sm font-bold text-violet-100">{activeBusiness?.business_name || "No business selected"}</span>
+        </div>
       </div>
-      <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <Panel title="Active campaigns" subtitle="Campaign workspace with audiences, channels, budgets, goals, and KPIs.">
-          <List items={shownCampaigns?.slice(0, 8)} empty="No campaigns yet. Launch the cloud kitchen campaign." render={(campaign) => (
-            <article key={campaign.campaign_id} className="rounded-xl border border-ink/10 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{campaign.name}</p>
-                  <p className="mt-1 text-xs text-ink/45">${campaign.budget} / {campaign.channels?.join(", ")}</p>
+
+      <section className="grid gap-6 2xl:grid-cols-[1fr_18rem]">
+        <div className="grid gap-6">
+          <DarkPanel title="Voice Command" className="min-h-[32rem]">
+            <div className="flex justify-end gap-2">
+              {["idle", "listening"].map((state) => (
+                <span key={state} className={`rounded-full px-5 py-2 text-sm font-bold ${voiceState === state ? statusColor[state] : "bg-slate-900 text-slate-500"}`}>{label(state)}</span>
+              ))}
+            </div>
+            <div className="grid min-h-[24rem] place-items-center">
+              <div className="text-center">
+                <button onClick={active ? onVoiceStop : onVoiceStart} className={`marketing-voice-orb voice-orb-${voiceState}`} aria-label="Marketing voice command">
+                  <span className="marketing-voice-core" />
+                </button>
+                <div className="mt-6 flex h-16 items-end justify-center gap-3">
+                  {[32, 54, 46, 58, 42, 68, 36, 64, 48, 58, 62, 50, 66, 38, 54].map((height, index) => (
+                    <span key={index} className={`marketing-wave-bar ${active ? "is-active" : ""}`} style={{ height }} />
+                  ))}
                 </div>
-                <span className="rounded-full bg-acid px-2.5 py-1 text-[0.65rem] font-bold uppercase">{campaign.status}</span>
+                <p className="mt-4 text-2xl font-bold text-white">{label(voiceState || "idle")}...</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{voiceError || interimTranscript || `"${request || "Ask Pardha to launch, analyse or optimise your marketing."}"`}</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <button onClick={onVoiceStart} disabled={active} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-cyan-400 px-5 text-sm font-bold text-slate-950 disabled:opacity-40"><Icon name="mic" /> Talk</button>
+                  <button onClick={onVoiceStop} className="min-h-11 rounded-2xl border border-slate-800 bg-slate-900 px-5 text-sm font-bold text-slate-200">Interrupt</button>
+                  <button onClick={onLaunch} disabled={working || !request.trim()} className="min-h-11 rounded-2xl bg-violet-500 px-5 text-sm font-bold text-white disabled:opacity-40">Execute Request</button>
+                </div>
               </div>
-              <p className="mt-3 text-sm leading-6 text-ink/60">{short(campaign.objective, 220)}</p>
-            </article>
-          )} />
-        </Panel>
-        <Panel title="Performance" subtitle="Impressions, clicks, CTR, conversions, leads, CPL, ROAS, and pipeline contribution.">
-          <List items={shownPerformance?.slice(0, 8)} empty="No marketing analytics yet." render={(row) => <div key={`${row.campaign_id}-${row.channel}`} className="rounded-xl bg-ink/[0.035] px-4 py-3"><div className="flex items-center justify-between"><p className="text-sm font-semibold">{row.channel}</p><span className="text-xs font-bold">{row.leads} leads</span></div><p className="mt-1 text-xs text-ink/45">{row.impressions} impressions / {row.ctr}% CTR / ROAS {row.roas}x</p></div>} />
-        </Panel>
-      </section>
-      <section className="grid gap-5 xl:grid-cols-3">
-        <Panel title="Content pipeline" subtitle="Posts, blogs, case studies, landing pages, email, ads, CTAs, and stories.">
-          <List items={shownContent?.slice(0, 8)} empty="No content assets yet." render={(item) => <p key={item.content_id} className="rounded-xl border border-ink/10 px-4 py-3 text-sm"><strong>{item.title}</strong><span className="block text-xs text-ink/45">{label(item.content_type)} / {item.channel} / {item.status}</span></p>} />
-        </Panel>
-        <Panel title="Upcoming calendar" subtitle="Weekly, monthly, and quarterly publishing plan.">
-          <List items={upcoming.slice(0, 10)} empty="No scheduled campaign activity." render={(item) => <p key={item.calendar_item_id} className="rounded-xl bg-ink/[0.035] px-4 py-3 text-sm"><strong>{item.title}</strong><span className="block text-xs text-ink/45">{item.channel} / {relativeTime(item.scheduled_for)}</span></p>} />
-        </Panel>
-        <Panel title="Recommendations" subtitle="CEO-ready marketing next actions.">
-          <List items={recommendations.slice(0, 8)} empty="No recommendations yet." render={(item, index) => <p key={index} className="rounded-xl bg-acid/40 px-4 py-3 text-sm">{item}</p>} />
-        </Panel>
+            </div>
+            <div className="flex flex-wrap gap-5 text-xs font-bold">
+              <span className="text-slate-500"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-slate-500" />Idle</span>
+              <span className="text-cyan-300"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-cyan-300" />Listening</span>
+              <span className="text-violet-300"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-violet-400" />Thinking</span>
+              <span className="text-emerald-300"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />Speaking</span>
+              <span className="ml-auto text-slate-500">Model {ollama?.current_model || ollama?.model || "qwen3:8b"} / score {validation?.score ?? "n/a"}</span>
+            </div>
+          </DarkPanel>
+
+          <section className="grid gap-6 xl:grid-cols-[1fr_0.82fr]">
+            <DarkPanel title="Conversation" action={<span className={`rounded-full px-4 py-2 text-xs font-bold uppercase ${statusColor[voiceState] || statusColor.idle}`}>{active ? "Streaming" : label(voiceState)}</span>}>
+              <div className="space-y-4">
+                <input value={request} onChange={(event) => setRequest(event.target.value)} className="min-h-12 w-full rounded-2xl border border-slate-800 bg-violet-500/20 px-4 text-sm font-semibold text-white outline-none placeholder:text-slate-600" placeholder="Ask Pardha to optimise campaign spend..." />
+                {latestUser && <div className="ml-auto max-w-[78%] rounded-2xl bg-violet-500/25 px-5 py-4 text-sm font-semibold text-violet-50">{latestUser.content}</div>}
+                {latestAssistant ? (
+                  <div className="rounded-2xl bg-slate-900 px-5 py-4">
+                    <p className="text-sm font-bold text-cyan-300">Pardha</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{latestAssistant.content}</p>
+                  </div>
+                ) : <DarkEmpty>No marketing conversation yet. Start with voice or type a request.</DarkEmpty>}
+                {suggestedPrompts.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-xs font-bold text-slate-500">Suggested prompts</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedPrompts.map((prompt) => <button key={prompt} onClick={() => setRequest(prompt)} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300">{short(prompt, 48)}</button>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DarkPanel>
+
+            <DarkPanel title="Execution Timeline">
+              <DarkList items={campaignTimeline} empty="No voice or campaign execution timeline yet." render={(item) => (
+                <div key={item.id} className="grid grid-cols-[auto_1fr] gap-4">
+                  <span className={`mt-1 h-3 w-3 rounded-full ${String(item.state).includes("pending") ? "bg-amber-400" : String(item.state).includes("error") ? "bg-rose-400" : "bg-emerald-400"}`} />
+                  <div className="pb-4">
+                    <p className="text-sm font-bold text-white">{item.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.detail}</p>
+                  </div>
+                </div>
+              )} />
+            </DarkPanel>
+          </section>
+
+          <DarkPanel title="Marketing Analytics">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <DarkList items={shownPerformance.slice(0, 6)} empty="No marketing analytics returned for this business." render={(row) => (
+                <article key={`${row.campaign_id}-${row.channel}`} className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4">
+                  <p className="text-sm font-bold text-white">{row.channel}</p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">{row.impressions} impressions / {row.ctr}% CTR / {row.leads} leads / ROAS {row.roas}x</p>
+                </article>
+              )} />
+            </div>
+          </DarkPanel>
+        </div>
+
+        <aside className="grid content-start gap-6">
+          <DarkPanel title="Live Intelligence">
+            <div className="space-y-6">
+              <div>
+                <h3 className="mb-3 text-lg font-bold text-white">Current Campaigns</h3>
+                <DarkList items={shownCampaigns.slice(0, 3)} empty="No active campaigns." render={(campaign) => (
+                  <article key={campaign.campaign_id} className="rounded-2xl bg-slate-900 px-4 py-3">
+                    <p className="text-sm font-bold text-white">{campaign.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">{campaign.channels?.join(", ") || "No channels"} / {label(campaign.status)}</p>
+                  </article>
+                )} />
+              </div>
+              <div>
+                <h3 className="mb-3 text-lg font-bold text-white">Pending Approvals</h3>
+                <DarkList items={(approvals || []).slice(0, 3)} empty="No approvals waiting." render={(approval) => (
+                  <article key={approval.approval_id || approval.plan_id} className="rounded-2xl bg-violet-500/10 px-4 py-3">
+                    <p className="text-sm font-bold text-white">{approval.title || approval.approval_type}</p>
+                    <p className="mt-1 text-xs text-slate-500">{label(approval.risk_level || approval.status || "review")}</p>
+                  </article>
+                )} />
+              </div>
+              <div>
+                <h3 className="mb-3 text-lg font-bold text-white">Top KPIs</h3>
+                <DarkList items={metricRows.slice(0, 4)} empty="No marketing KPIs returned." render={(metric) => (
+                  <article key={metric.label} className="rounded-2xl bg-slate-900 px-4 py-3">
+                    <p className="text-xs font-bold uppercase text-slate-500">{metric.label}</p>
+                    <p className="mt-2 text-2xl font-bold text-white">{metric.value}</p>
+                    {metric.detail && <p className="mt-1 text-xs text-cyan-300">{metric.detail}</p>}
+                  </article>
+                )} />
+              </div>
+              <div>
+                <h3 className="mb-3 text-lg font-bold text-white">AI Recommendations</h3>
+                <DarkList items={recommendations.slice(0, 3)} empty="No recommendations yet." render={(item, index) => (
+                  <article key={index} className="rounded-2xl bg-slate-900 px-4 py-3">
+                    <p className="text-sm font-bold text-white">{typeof item === "string" ? item : item.title}</p>
+                    {typeof item !== "string" && item.detail && <p className="mt-1 text-xs text-slate-500">{item.detail}</p>}
+                  </article>
+                )} />
+              </div>
+            </div>
+          </DarkPanel>
+        </aside>
       </section>
     </section>
   );
