@@ -1,0 +1,55 @@
+{
+  "business_name": "DP360",
+  "category": "customer_problems",
+  "title": "DP360 Customer Problems",
+  "version": "1.0",
+  "content": {
+    "problem_1": {
+      "title": "Lack of Business Visibility",
+      "description": "Owners cannot view business performance across locations in one place."
+    },
+    "problem_2": {
+      "title": "Inventory Leakage",
+      "description": "Businesses lose money because stock movement is not tracked accurately."
+    },
+    "problem_3": {
+      "title": "Manual Reporting",
+      "description": "Managers spend hours preparing reports instead of managing operations."
+    },
+    "problem_4": {
+      "title": "No Real Time Insights",
+      "description": "Decision makers receive information too late."
+    },
+    "problem_5": {
+      "title": "Multi Outlet Complexity",
+      "description": "Comparing performance across outlets is difficult."
+    },
+    "problem_6": {
+      "title": "Revenue Leakage",
+      "description": "Refunds, discounts, and operational inefficiencies reduce profitability."
+    },
+    "problem_7": {
+      "title": "No Forecasting",
+      "description": "Businesses cannot predict demand or inventory requirements."
+    },
+    "problem_8": {
+      "title": "Fragmented Systems",
+      "description": "POS, inventory, payments, and reporting exist in separate tools."
+    },
+    "problem_9": {
+      "title": "Lack of Executive Reporting",
+      "description": "CEOs lack a single source of truth."
+    },
+    "problem_10": {
+      "title": "Reactive Decision Making",
+      "description": "Organizations react to issues after losses occur."
+    }
+  },
+  "tags": [
+    "dp360",
+    "problems",
+    "customers",
+    "pain_points"
+  ],
+  "source": "founder_memory"
+}

@@ -1,0 +1,66 @@
+{
+  "business_name": "DP360",
+  "category": "product",
+  "title": "DP360 Product Overview",
+  "version": "1.0",
+  "content": {
+    "product_name": "DP360",
+    "product_type": "Business Intelligence and Analytics Platform",
+    "positioning": "Operating Intelligence Layer for Retail Businesses",
+    "vision": "Transform business data into business decisions.",
+    "core_modules": [
+      {
+        "name": "CEO Dashboard",
+        "purpose": "Executive business monitoring"
+      },
+      {
+        "name": "Sales Dashboard",
+        "purpose": "Revenue and transaction intelligence"
+      },
+      {
+        "name": "Inventory Dashboard",
+        "purpose": "Stock and consumption monitoring"
+      },
+      {
+        "name": "Outlet Analytics",
+        "purpose": "Location performance tracking"
+      },
+      {
+        "name": "KPI Engine",
+        "purpose": "Business metric calculations"
+      }
+    ],
+    "business_value": [
+      "Increase operational visibility",
+      "Reduce inventory losses",
+      "Improve decision making",
+      "Automate reporting",
+      "Increase profitability"
+    ],
+    "target_users": [
+      "Business Owners",
+      "CEOs",
+      "Operations Managers",
+      "Inventory Managers",
+      "Finance Teams"
+    ],
+    "pricing_model": {
+      "type": "Annual SaaS Subscription",
+      "estimated_price": "18000 INR per outlet per year"
+    },
+    "future_direction": [
+      "AI Recommendations",
+      "Predictive Analytics",
+      "Business Copilot",
+      "Agentic Intelligence",
+      "Conversational Analytics"
+    ]
+  },
+  "tags": [
+    "dp360",
+    "product",
+    "analytics",
+    "saas"
+  ],
+  "source": "founder_memory"
+}

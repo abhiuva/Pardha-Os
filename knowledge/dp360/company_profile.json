@@ -1,0 +1,55 @@
+{
+  "business_name": "UVA",
+  "category": "company_profile",
+  "title": "UVA Company Profile",
+  "version": "1.0",
+  "content": {
+    "company_name": "UVA Product and IT Services",
+    "industry": "Product Engineering and Technology Services",
+    "focus_areas": [
+      "Product Engineering",
+      "Artificial Intelligence",
+      "Cloud Engineering",
+      "Enterprise Software Development"
+    ],
+    "mission": "Build intelligent software products that help businesses make faster and better decisions.",
+    "products": [
+      {
+        "name": "DP360",
+        "description": "Retail and business intelligence platform"
+      },
+      {
+        "name": "SalesPulse",
+        "description": "Point of Sale and business operations platform"
+      },
+      {
+        "name": "Trevia EV",
+        "description": "EV charging and mobility ecosystem"
+      }
+    ],
+    "core_strengths": [
+      "Cloud Native Development",
+      "AI Powered Solutions",
+      "Product Strategy",
+      "Enterprise Platforms",
+      "Data Analytics",
+      "Digital Transformation"
+    ],
+    "target_customers": [
+      "Retail Businesses",
+      "Restaurant Chains",
+      "Cafes",
+      "Multi Outlet Enterprises",
+      "EV Ecosystem Companies",
+      "SMEs"
+    ],
+    "long_term_vision": "Create intelligent AI-powered operating systems for businesses that automate decision making and accelerate growth."
+  },
+  "tags": [
+    "uva",
+    "company",
+    "ai",
+    "engineering"
+  ],
+  "source": "founder_memory"
+}

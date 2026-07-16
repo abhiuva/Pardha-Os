@@ -1,0 +1,91 @@
+{
+  "business_name": "DP360",
+  "category": "architecture",
+  "title": "DP360 System Architecture",
+  "version": "1.0",
+  "content": {
+    "overview": "DP360 is a cloud-based SaaS analytics platform that consolidates business data from POS systems, inventory systems, payment systems, and operational sources into a unified intelligence platform.",
+    "architecture_type": "Cloud Native SaaS",
+    "deployment_model": "Multi Tenant",
+    "frontend": {
+      "purpose": "Business dashboards and analytics",
+      "hosting": "Netlify",
+      "capabilities": [
+        "CEO Dashboard",
+        "Sales Dashboard",
+        "Inventory Dashboard",
+        "Outlet Analytics",
+        "KPI Widgets",
+        "Executive Reporting"
+      ]
+    },
+    "backend": {
+      "purpose": "Business logic and API services",
+      "hosting": "Render",
+      "capabilities": [
+        "Authentication",
+        "Analytics Engine",
+        "Data Aggregation",
+        "Inventory Processing",
+        "Reporting APIs",
+        "Business Rules Engine"
+      ]
+    },
+    "database": {
+      "purpose": "Operational and analytical storage",
+      "capabilities": [
+        "Sales Data Storage",
+        "Inventory Data Storage",
+        "Outlet Configuration",
+        "User Management",
+        "Historical Analytics"
+      ]
+    },
+    "integrations": {
+      "salespulse": {
+        "purpose": "POS Integration",
+        "data_received": [
+          "Orders",
+          "Transactions",
+          "Products",
+          "Inventory",
+          "Refunds",
+          "Payments"
+        ]
+      },
+      "payment_gateways": {
+        "supported": [
+          "Razorpay"
+        ]
+      }
+    },
+    "analytics_layer": {
+      "capabilities": [
+        "Sales Analytics",
+        "Inventory Intelligence",
+        "Executive Insights",
+        "Outlet Comparison",
+        "Trend Analysis",
+        "Forecasting"
+      ]
+    },
+    "future_architecture": {
+      "planned_capabilities": [
+        "AI Copilot",
+        "Predictive Analytics",
+        "Inventory Forecasting",
+        "Automated Recommendations",
+        "Natural Language Queries",
+        "Agentic Business Intelligence"
+      ]
+    }
+  },
+  "tags": [
+    "dp360",
+    "architecture",
+    "saas",
+    "analytics",
+    "cloud"
+  ],
+  "source": "founder_memory"
+}
