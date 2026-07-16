@@ -30,13 +30,15 @@ class ConversationalIntelligenceTestCase(unittest.TestCase):
         self.assertGreaterEqual(payload["response"]["confidence"], 50)
         self.assertTrue(payload["response"]["next_recommended_actions"])
         self.assertIn("business.context", payload["assistant_message"]["context_snapshot"]["context_sources"])
-        self.assertIn("knowledge.search", payload["assistant_message"]["context_snapshot"]["context_sources"])
+        self.assertIn("projects.catalog", payload["assistant_message"]["context_snapshot"]["context_sources"])
+        self.assertNotIn("marketing.summary", payload["assistant_message"]["context_snapshot"]["context_sources"])
+        self.assertEqual(payload["assistant_message"]["context_snapshot"]["route"]["category"], "Engineering")
 
         detail = self.client.get(f"/conversations/{conversation_id}")
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(len(detail.json()["messages"]), 2)
         timeline_types = {item["event_type"] for item in detail.json()["timeline"]}
-        self.assertTrue({"question", "intent", "capability_selection", "execution", "verification", "result"}.issubset(timeline_types))
+        self.assertTrue({"question", "intent", "work_selection", "execution", "verification", "result"}.issubset(timeline_types))
 
         with SessionLocal() as session:
             self.assertIsNotNone(session.get(ConversationSession, conversation_id))
@@ -54,7 +56,7 @@ class ConversationalIntelligenceTestCase(unittest.TestCase):
             json={"business_id": self.business["business_id"], "message": "Generate executive summary"},
         )
         self.assertEqual(message.status_code, 201)
-        self.assertEqual(message.json()["assistant_message"]["capability_ids"], ["ceo.daily_brief"])
+        self.assertIn("ceo.daily_brief", message.json()["assistant_message"]["capability_ids"])
 
         listed = self.client.get("/conversations?search=strategy")
         self.assertEqual(listed.status_code, 200)

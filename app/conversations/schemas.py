@@ -144,6 +144,15 @@ class ConversationHardeningValidationReport(BaseModel):
     policy: Dict[str, bool]
 
 
+class ExecutiveRoutingValidationReport(BaseModel):
+    score: int
+    ready: bool
+    scenarios_run: int
+    categories: Dict[str, Dict[str, Any]]
+    failures: List[Dict[str, Any]]
+    policy: Dict[str, bool]
+
+
 class VoiceRuntimeValidationReport(BaseModel):
     score: int
     ready: bool

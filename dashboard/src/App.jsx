@@ -1205,7 +1205,7 @@ function App() {
     setChatMessages((current) => [...current, result.user_message, result.assistant_message]);
     setConversationTimeline(result.timeline || []);
     setChatInput("");
-    setNotice(`Conversation handled by ${result.assistant_message.capability_ids?.join(", ") || "context resolver"}`);
+    setNotice("Pardha responded.");
     if (shouldSpeak) speakResponse(result.assistant_message.content);
     else setVoiceState("completed");
   }, [speakResponse]);
@@ -1213,7 +1213,7 @@ function App() {
   const sendConversationMessage = useCallback(async (event, overrideMessage, options = {}) => {
     event?.preventDefault?.();
     const message = (overrideMessage || chatInput).trim();
-    if (!message || !activeBusiness) return;
+    if (!message) return;
     setWorking(true);
     setStreamingEvents([]);
     setVoiceState("thinking");
@@ -1221,7 +1221,7 @@ function App() {
     const response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ business_id: activeBusiness.business_id, message, module_context: activeTab }),
+      body: JSON.stringify({ business_id: activeBusiness?.business_id, message, module_context: activeTab }),
     });
     if (response.ok) {
       if (response.body) {
@@ -1770,15 +1770,15 @@ function AskPardhaTab({ data, activeBusiness, activeConversationId, messages, co
         <Panel title="Open Tasks" subtitle={`${openTasks.length} visible work items.`}>
           <List items={openTasks} empty="No open tasks for this business." render={(item) => <p key={item.task_id} className="rounded-xl bg-ink/[0.035] px-4 py-3 text-sm"><strong>{item.title}</strong><span className="block text-xs text-ink/45">{label(item.status)} / {item.owner || item.agent_name || "unassigned"}</span></p>} />
         </Panel>
-        <Panel title="Capability timeline" subtitle="Question to intent to execution to verification.">
+        <Panel title="Pardha timeline" subtitle="Question to understanding to work to answer.">
           <List items={(timeline || []).slice(-8)} empty="No timeline yet." render={(item) => <p key={item.timeline_event_id} className="rounded-xl bg-ink/[0.035] px-4 py-3 text-sm"><strong>{label(item.event_type)}</strong><span className="block text-xs text-ink/45">{short(item.detail, 110)}</span></p>} />
         </Panel>
-        <Panel title="Execution Transparency" subtitle="Evidence and internals stay here unless you ask for details.">
+        <Panel title="Response Check" subtitle="How Pardha decided what context to use.">
           {lastResponse?.transparency ? (
             <div className="grid gap-2 text-sm">
-              <p className="rounded-xl bg-ink/[0.035] px-4 py-3"><strong>Intent</strong><span className="block text-xs text-ink/45">{label(lastResponse.transparency.intent || "unknown")}</span></p>
+              <p className="rounded-xl bg-ink/[0.035] px-4 py-3"><strong>Request Type</strong><span className="block text-xs text-ink/45">{label(lastResponse.transparency.intent || "unknown")}</span></p>
               <p className="rounded-xl bg-ink/[0.035] px-4 py-3"><strong>Confidence</strong><span className="block text-xs text-ink/45">{lastResponse.transparency.confidence || lastResponse.confidence}% / {lastResponse.reasoning_provider || "deterministic"}</span></p>
-              <p className="rounded-xl bg-ink/[0.035] px-4 py-3"><strong>Capabilities</strong><span className="block text-xs text-ink/45">{(lastResponse.transparency.capabilities_used || []).map((item) => item.name || item.capability_id).slice(0, 3).join(", ") || "No capability executed"}</span></p>
+              <p className="rounded-xl bg-ink/[0.035] px-4 py-3"><strong>Context</strong><span className="block text-xs text-ink/45">{label(lastResponse.transparency.business || "general conversation")}</span></p>
               <p className="rounded-xl bg-ink/[0.035] px-4 py-3"><strong>Verification</strong><span className="block text-xs text-ink/45">{short(lastResponse.transparency.verification?.summary || "Verified", 120)}</span></p>
             </div>
           ) : <EmptyState>No transparency package yet.</EmptyState>}

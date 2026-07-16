@@ -687,14 +687,21 @@ class ConversationSession(Base):
     __tablename__ = "conversation_sessions"
 
     conversation_id = Column(String(36), primary_key=True, index=True)
+    id = Column(String(36), nullable=True, unique=True, index=True)
     title = Column(String, nullable=False, index=True)
     business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=True, index=True)
+    founder_id = Column(String(36), ForeignKey("auth_users.user_id"), nullable=True, index=True)
     owner = Column(String, nullable=False, default="Founder", index=True)
     conversation_type = Column(String, nullable=False, default="general", index=True)
+    status = Column(String, nullable=False, default="active", index=True)
+    voice_enabled = Column(Integer, nullable=False, default=0, index=True)
     pinned = Column(Integer, nullable=False, default=0, index=True)
     archived = Column(Integer, nullable=False, default=0, index=True)
     summary = Column(Text, nullable=False, default="")
     context_snapshot = Column(JSON, nullable=False, default=dict)
+    current_context = Column(JSON, nullable=False, default=dict)
+    started_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    ended_at = Column(DateTime(timezone=True), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, index=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
@@ -707,7 +714,14 @@ class ConversationMessage(Base):
     business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=True, index=True)
     role = Column(String, nullable=False, index=True)
     content = Column(Text, nullable=False)
+    message = Column(Text, nullable=True)
     intent = Column(String, nullable=False, default="general", index=True)
+    planner = Column(String, nullable=True, index=True)
+    specialist = Column(String, nullable=True, index=True)
+    reasoning_model = Column(String, nullable=True, index=True)
+    tool_used = Column(String, nullable=True, index=True)
+    tokens = Column(Integer, nullable=False, default=0, index=True)
+    latency = Column(Integer, nullable=False, default=0, index=True)
     conversation_type = Column(String, nullable=False, default="general", index=True)
     context_snapshot = Column(JSON, nullable=False, default=dict)
     capability_ids = Column(JSON, nullable=False, default=list)
@@ -725,6 +739,218 @@ class ConversationTimelineEvent(Base):
     title = Column(String, nullable=False)
     detail = Column(Text, nullable=False)
     payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class ConversationContext(Base):
+    __tablename__ = "conversation_context"
+
+    context_id = Column(String(36), primary_key=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("conversation_sessions.conversation_id"), nullable=False, unique=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=True, index=True)
+    active_module = Column(String, nullable=True, index=True)
+    active_business = Column(JSON, nullable=False, default=dict)
+    active_specialist = Column(String, nullable=True, index=True)
+    current_goal = Column(JSON, nullable=False, default=dict)
+    context_payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class ConversationIntent(Base):
+    __tablename__ = "conversation_intents"
+
+    intent_id = Column(String(36), primary_key=True, index=True)
+    intent_name = Column(String, nullable=False, unique=True, index=True)
+    category = Column(String, nullable=False, index=True)
+    priority = Column(Integer, nullable=False, default=50, index=True)
+    requires_business_context = Column(Integer, nullable=False, default=0, index=True)
+    requires_reasoning = Column(Integer, nullable=False, default=0, index=True)
+    requires_tool = Column(Integer, nullable=False, default=0, index=True)
+    requires_memory = Column(Integer, nullable=False, default=0, index=True)
+    allowed_specialists = Column(JSON, nullable=False, default=list)
+    status = Column(String, nullable=False, default="active", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class Specialist(Base):
+    __tablename__ = "specialists"
+
+    specialist_id = Column(String(36), primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True, index=True)
+    role = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=False, default="")
+    voice_enabled = Column(Integer, nullable=False, default=0, index=True)
+    system_prompt = Column(Text, nullable=False, default="")
+    memory_scope = Column(JSON, nullable=False, default=list)
+    knowledge_scope = Column(JSON, nullable=False, default=list)
+    capability_scope = Column(JSON, nullable=False, default=list)
+    status = Column(String, nullable=False, default="active", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class ReasoningModel(Base):
+    __tablename__ = "reasoning_models"
+
+    reasoning_model_id = Column(String(36), primary_key=True, index=True)
+    provider = Column(String, nullable=False, index=True)
+    model = Column(String, nullable=False, index=True)
+    host = Column(String, nullable=True, index=True)
+    endpoint = Column(Text, nullable=True)
+    priority = Column(Integer, nullable=False, default=50, index=True)
+    max_context = Column(Integer, nullable=False, default=4096, index=True)
+    cost = Column(String, nullable=False, default="local", index=True)
+    latency = Column(Integer, nullable=False, default=0, index=True)
+    health = Column(String, nullable=False, default="unknown", index=True)
+    status = Column(String, nullable=False, default="available", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPServer(Base):
+    __tablename__ = "mcp_servers"
+
+    mcp_server_id = Column(String(36), primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True, index=True)
+    endpoint = Column(Text, nullable=False)
+    transport = Column(String, nullable=False, default="stdio", index=True)
+    authentication = Column(JSON, nullable=False, default=dict)
+    status = Column(String, nullable=False, default="not_configured", index=True)
+    health = Column(String, nullable=False, default="unknown", index=True)
+    capabilities = Column(JSON, nullable=False, default=list)
+    last_seen = Column(DateTime(timezone=True), nullable=True, index=True)
+    supported_tools = Column(JSON, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class CapabilityRoute(Base):
+    __tablename__ = "capability_routes"
+
+    route_id = Column(String(36), primary_key=True, index=True)
+    intent = Column(String, nullable=False, index=True)
+    planner = Column(String, nullable=True, index=True)
+    specialist = Column(String, nullable=True, index=True)
+    tool = Column(String, nullable=True, index=True)
+    mcp_server = Column(String, nullable=True, index=True)
+    reasoning_model = Column(String, nullable=True, index=True)
+    priority = Column(Integer, nullable=False, default=50, index=True)
+    status = Column(String, nullable=False, default="active", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class FounderMemory(Base):
+    __tablename__ = "founder_memory"
+
+    memory_id = Column(String(36), primary_key=True, index=True)
+    founder_id = Column(String(36), ForeignKey("auth_users.user_id"), nullable=True, index=True)
+    owner = Column(String, nullable=False, default="Founder", index=True)
+    memory_type = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+    confidence = Column(Integer, nullable=False, default=60, index=True)
+    source_conversation_id = Column(String(36), ForeignKey("conversation_sessions.conversation_id"), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class BusinessMemory(Base):
+    __tablename__ = "business_memory"
+
+    memory_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    memory_type = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+    confidence = Column(Integer, nullable=False, default=60, index=True)
+    source_id = Column(String(36), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class SpecialistMemory(Base):
+    __tablename__ = "specialist_memory"
+
+    memory_id = Column(String(36), primary_key=True, index=True)
+    specialist_id = Column(String(36), ForeignKey("specialists.specialist_id"), nullable=True, index=True)
+    specialist = Column(String, nullable=False, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=True, index=True)
+    memory_type = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+    confidence = Column(Integer, nullable=False, default=60, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class ConversationMemory(Base):
+    __tablename__ = "conversation_memory"
+
+    memory_id = Column(String(36), primary_key=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("conversation_sessions.conversation_id"), nullable=False, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=True, index=True)
+    memory_type = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class LearningMemory(Base):
+    __tablename__ = "learning_memory"
+
+    memory_id = Column(String(36), primary_key=True, index=True)
+    owner = Column(String, nullable=False, default="Founder", index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=True, index=True)
+    signal_type = Column(String, nullable=False, index=True)
+    signal_value = Column(JSON, nullable=False, default=dict)
+    confidence = Column(Integer, nullable=False, default=60, index=True)
+    source_event_id = Column(String(36), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class LearningEvent(Base):
+    __tablename__ = "learning_events"
+
+    learning_event_id = Column(String(36), primary_key=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("conversation_sessions.conversation_id"), nullable=True, index=True)
+    event = Column(String, nullable=False, index=True)
+    correction = Column(Text, nullable=True)
+    accepted = Column(Integer, nullable=False, default=0, index=True)
+    confidence = Column(Integer, nullable=False, default=60, index=True)
+    feedback = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class VoiceSession(Base):
+    __tablename__ = "voice_sessions"
+
+    voice_session_id = Column(String(36), primary_key=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("conversation_sessions.conversation_id"), nullable=False, index=True)
+    microphone = Column(JSON, nullable=False, default=dict)
+    transcription = Column(JSON, nullable=False, default=dict)
+    reasoning_time = Column(Integer, nullable=False, default=0, index=True)
+    speech_time = Column(Integer, nullable=False, default=0, index=True)
+    duration = Column(Integer, nullable=False, default=0, index=True)
+    status = Column(String, nullable=False, default="active", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class ExecutionTrace(Base):
+    __tablename__ = "execution_trace"
+
+    trace_id = Column(String(36), primary_key=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("conversation_sessions.conversation_id"), nullable=True, index=True)
+    planner = Column(String, nullable=True, index=True)
+    specialist = Column(String, nullable=True, index=True)
+    tool = Column(String, nullable=True, index=True)
+    duration = Column(Integer, nullable=False, default=0, index=True)
+    result = Column(JSON, nullable=False, default=dict)
+    status = Column(String, nullable=False, default="recorded", index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
 

@@ -16,6 +16,9 @@ INTERNAL_TERMS = (
     "execution adapter",
     "intelligence kernel",
     "registered capability",
+    "ceo agent",
+    "cto agent",
+    "pm agent",
 )
 
 
@@ -107,14 +110,14 @@ def _deterministic_response(
         suffix = f" I can use {', '.join(names[:5])}." if names else ""
         return f"I need one decision before I act: which business should I use for this request?{suffix}"
 
-    if intent in {"executive_help", "system_health"} or "what can you do" in text or "how do you work" in text:
-        return _capability_explanation(runtime, business_name)
-
     if any(term in text for term in ("connected", "connect", "gmail", "outlook", "jira", "whatsapp", "calendar", "github", "ollama", "voice")):
         return _diagnostic_guidance(founder_message, runtime, payload)
 
     if any(term in text for term in ("why", "broken", "not working", "failed", "didn't")):
         return _diagnostic_guidance(founder_message, runtime, payload)
+
+    if intent in {"executive_help", "system_health"} or "what can you do" in text or "how do you work" in text:
+        return _capability_explanation(runtime, business_name)
 
     if (payload.execution or {}).get("plan_id"):
         execution = payload.execution or {}
@@ -137,7 +140,7 @@ def _deterministic_response(
         return f"Based on the current {business_name or 'business'} operating context, here is the useful signal: {output_summary}"
 
     if payload.confidence <= 0:
-        return "I do not have a working operational path for that request yet. The next useful step is to open Capability Explorer and register or repair the missing capability."
+        return "I do not have a working operational path for that request yet. The next useful step is to review the operating setup and repair the missing connection or workflow."
 
     actions = _action_sentence(payload.next_recommended_actions)
     return f"I reviewed the current {business_name or 'business'} context and completed the requested check. {actions}".strip()
@@ -193,7 +196,7 @@ def _capability_explanation(runtime: dict[str, Any], business_name: str | None) 
     return (
         f"Here is what I can do right now. I can work across {len(businesses)} businesses"
         f"{f', including {business_name}' if business_name else ''}; inspect {knowledge_count} knowledge records in the current context; "
-        f"use {caps.get('total', 0)} registered operating capabilities; check {len(connectors)} integrations with {len(connected)} live-authenticated; "
+        f"use {caps.get('total', 0)} internal operating paths; check {len(connectors)} integrations with {len(connected)} live-authenticated; "
         f"and monitor {running} active execution. Ask me for a brief, roadmap, connector diagnosis, knowledge search, project review, task plan, or execution status."
     )
 

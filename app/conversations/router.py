@@ -14,6 +14,7 @@ from app.conversations.schemas import (
     ConversationHardeningValidationReport,
     ConversationMessageRequest,
     ConversationMessageResponse,
+    ExecutiveRoutingValidationReport,
     ConversationSession,
     ConversationUpdate,
     ConversationValidationReport,
@@ -22,6 +23,7 @@ from app.conversations.schemas import (
 from app.conversations.service import (
     conversation_hardening_validation,
     conversation_engine_status,
+    executive_routing_validation,
     conversation_validation,
     create_conversation,
     delete_conversation,
@@ -65,6 +67,11 @@ def conversation_validation_route():
 @router.get("/hardening-validation", response_model=ConversationHardeningValidationReport)
 def conversation_hardening_validation_route():
     return conversation_hardening_validation()
+
+
+@router.get("/routing-validation", response_model=ExecutiveRoutingValidationReport)
+def executive_routing_validation_route():
+    return executive_routing_validation()
 
 
 @router.get("/voice-validation", response_model=VoiceRuntimeValidationReport)

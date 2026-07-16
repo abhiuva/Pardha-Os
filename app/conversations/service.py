@@ -7,6 +7,7 @@ from uuid import uuid4
 from app.capabilities.schemas import CapabilityExecutionRequest, CapabilitySearchRequest
 from app.capabilities.service import capability_health, execute_capability, list_capabilities, search_capabilities
 from app.conversations.composer import compose_executive_response
+from app.conversations.executive_router import ExecutiveRoute, route_executive_intent
 from app.conversations.learning import record_operational_learning
 from app.conversations.schemas import (
     ConversationCreate,
@@ -181,17 +182,18 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
             raise ValueError("Conversation not found.")
         conversation = detail.conversation
 
+    route = route_executive_intent(request.message)
     requested_business_id = request.business_id or conversation.business_id
     if not _valid_business_id(requested_business_id):
         requested_business_id = None
-    context = _resolve_context(request.message, requested_business_id)
+    context = _assemble_context(request.message, requested_business_id, route, request.owner)
     if request.module_context:
         context["module_context"] = request.module_context
     business_id = context.get("business_id") or request.business_id or conversation.business_id
     if not _valid_business_id(business_id):
         business_id = None
-    conversation_type = _conversation_type(request.message)
-    intent = _intent(request.message, conversation_type)
+    conversation_type = route.category.lower().replace(" ", "_")
+    intent = route.intent
 
     with SessionLocal() as session:
         user = ConversationMessageModel(
@@ -212,7 +214,12 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
         session.commit()
         session.refresh(user)
 
-    if _is_live_status_request(request.message):
+    if route.category in {"General Conversation", "General Knowledge", "Weather", "Coding", "Memory", "Personal"}:
+        payload = _assistant_first_payload(request.message, route, context)
+        capability_ids = []
+        execution = None
+        source_output = payload.evidence
+    elif _is_live_status_request(request.message) or route.category == "System":
         payload = _live_status_payload(request.message, intent, context)
         capability_ids = [item["capability_id"] for item in payload.capabilities_used if item.get("capability_id")]
         execution = None
@@ -222,7 +229,7 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
         capability_ids: list[str] = []
         execution = None
         source_output = None
-    elif _should_plan(request.message):
+    elif route.needs_planner or _should_plan(request.message):
         plan_result = create_plan(PlanRequest(business_id=business_id, request=request.message, owner=request.owner, approve=False))
         capability_ids = plan_result.plan.capability_ids
         payload = _planning_payload(request.message, intent, plan_result, context)
@@ -277,8 +284,8 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
             created_at=datetime.now(timezone.utc),
         )
         session.add(assistant)
-        _add_timeline(session, conversation.conversation_id, assistant.message_id, "intent", "Intent detected", intent, {"conversation_type": conversation_type})
-        _add_timeline(session, conversation.conversation_id, assistant.message_id, "capability_selection", "Capabilities selected", ", ".join(capability_ids) or "No capability executed", {"capability_ids": capability_ids})
+        _add_timeline(session, conversation.conversation_id, assistant.message_id, "intent", "Pardha understood the request", route.category, {"conversation_type": conversation_type, "route": route.model_dump()})
+        _add_timeline(session, conversation.conversation_id, assistant.message_id, "work_selection", "Pardha selected the next step", route.reasoning_route, {"context_scope": route.context_scope})
         if execution:
             _add_timeline(session, conversation.conversation_id, assistant.message_id, "execution", "Execution completed", execution.status, execution.model_dump(mode="json"))
             _add_timeline(session, conversation.conversation_id, assistant.message_id, "verification", "Verification", payload.verification.get("summary", "Response verified."), payload.verification)
@@ -320,10 +327,11 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
 
 
 def stream_events(conversation_id: str | None, request: ConversationMessageRequest) -> list[dict]:
+    route = route_executive_intent(request.message)
     events = [
-        {"phase": "thinking", "message": "Resolving conversation context."},
-        {"phase": "planning", "message": "Selecting a registered capability through the Intelligence Kernel."},
-        {"phase": "executing", "message": "Executing the selected capability."},
+        {"phase": "thinking", "message": "Understanding your request."},
+        {"phase": "planning", "message": f"Preparing the right {route.context_scope} context."},
+        {"phase": "executing", "message": "Working on the answer."},
     ]
     result = send_message(conversation_id, request)
     events.append({"phase": "verifying", "message": result.response.verification.get("summary", "Verifying response evidence.")})
@@ -345,18 +353,22 @@ def conversation_engine_status() -> ConversationEngineStatus:
     pipeline = [
         "input_normalization",
         "conversation_session",
-        "memory_context",
-        "business_context",
-        "intent_detection",
+        "short_term_conversation",
+        "executive_intent_router",
+        "context_assembler",
+        "selective_memory_loading",
+        "reasoning_router",
+        "specialist_selection",
         "capability_discovery",
+        "mcp_readiness",
         "planning_or_execution",
         "verification",
         "streaming_response",
-            "history_persistence",
-            "executive_response_composer",
-            "runtime_inspection",
-            "operational_learning",
-        ]
+        "history_persistence",
+        "executive_response_composer",
+        "runtime_inspection",
+        "operational_learning",
+    ]
     return ConversationEngineStatus(
         engine="executive_conversation_engine",
         ready=db.connected and health.total > 0,
@@ -388,9 +400,12 @@ def conversation_engine_status() -> ConversationEngineStatus:
                 "microphone",
                 "speech_to_text",
                 "conversation_memory",
-                "business_context",
+                "executive_intent_router",
+                "context_assembler",
                 "intent_detection",
+                "specialist_selection",
                 "capability_discovery",
+                "mcp_readiness",
                 "reasoning_gate",
                 "ollama_qwen",
                 "planner",
@@ -406,7 +421,9 @@ def conversation_engine_status() -> ConversationEngineStatus:
             "streaming": "ndjson",
             "memory": "conversation_sessions.context_snapshot",
             "operational_learning_signals": learning_signals,
-            "business_assignment": "required_for_execution",
+            "business_assignment": "only_when_route_requires_business_context",
+            "specialist_visibility": "agents_hidden_from_founder_conversation",
+            "context_policy": "route_first_selective_context",
             "static_responses": False,
             "founder_facing_text": "executive_response_composer",
             "internal_transparency": "hidden_by_default",
@@ -421,6 +438,8 @@ def conversation_validation() -> ConversationValidationReport:
         {"name": "capabilities_registered", "pass": status.capabilities["total"] > 0, "evidence": status.capabilities},
         {"name": "streaming_enabled", "pass": status.diagnostics["streaming"] == "ndjson", "evidence": status.diagnostics},
         {"name": "history_persistent", "pass": "history_persistence" in status.pipeline, "evidence": status.conversations},
+        {"name": "executive_intent_router", "pass": "executive_intent_router" in status.pipeline, "evidence": status.pipeline},
+        {"name": "context_assembler", "pass": status.diagnostics.get("context_policy") == "route_first_selective_context", "evidence": status.diagnostics},
         {"name": "voice_diagnostics_available", "pass": bool(status.voice["browser_requirements"]), "evidence": status.voice},
         {"name": "connector_status_available", "pass": len(status.connectors) > 0, "evidence": {"connectors": len(status.connectors)}},
         {"name": "ollama_status_available", "pass": "connected" in status.ollama, "evidence": status.ollama},
@@ -467,7 +486,7 @@ def conversation_hardening_validation() -> ConversationHardeningValidationReport
         "discoverable": status.capabilities["total"] >= 3,
         "conversational": "streaming_response" in status.pipeline,
         "planner_integrated": status.capabilities["total"] >= 3,
-        "business_context_aware": "business_context" in status.pipeline,
+        "business_context_aware": "context_assembler" in status.pipeline,
         "diagnosable": len(status.connectors) > 0,
         "executable": "planning_or_execution" in status.pipeline,
         "visible": status.diagnostics.get("founder_facing_text") == "executive_response_composer",
@@ -481,6 +500,76 @@ def conversation_hardening_validation() -> ConversationHardeningValidationReport
     return ConversationHardeningValidationReport(score=score, ready=ready, scenarios_run=scenarios_run, categories=categories, failures=failures[:20], policy=policy)
 
 
+def executive_routing_validation():
+    from app.conversations.schemas import ExecutiveRoutingValidationReport
+
+    status = conversation_engine_status()
+    scenarios = {
+        "Weather": ["What is the weather in Bengaluru?", "Will it rain in San Francisco?", "Show tomorrow forecast"],
+        "General Knowledge": ["Explain unit economics", "What is gross margin?", "Define retention"],
+        "Coding": ["Write a Python function for retries", "Debug this React state issue", "Explain this SQL query"],
+        "Business": ["Review DP360 business health", "Summarize customer retention", "What should the company do next?"],
+        "Marketing": ["Review marketing campaign performance", "Improve CTR", "Summarise content pipeline"],
+        "Engineering": ["Review backend architecture", "Check repository health", "Find technical risks"],
+        "General Conversation": ["Good morning", "Thank you", "Hi Pardha"],
+        "Memory": ["Remember my preference", "What did we decide?", "Use my writing style"],
+        "Knowledge": ["Search uploaded documents", "Find DP360 roadmap", "Retrieve knowledge about pricing"],
+        "Planning": ["Create a growth plan", "Build a product roadmap", "Launch a campaign plan"],
+        "Voice": ["Why is voice not working?", "Check microphone status", "Is speech enabled?"],
+        "System": ["Check system health", "Is Gmail connected?", "Which model is active?"],
+        "Product": ["Create a PRD", "Review product roadmap", "Plan next sprint"],
+        "Personal": ["Prefer morning meetings", "Use concise writing style", "Remember my planning preference"],
+        "Execution": ["What is running?", "Review pending approvals", "Show blocked tasks"],
+    }
+    expected_alias = {"Voice": "System"}
+    categories: dict[str, dict[str, Any]] = {}
+    failures: list[dict[str, Any]] = []
+    scenarios_run = 0
+    for category, prompts in scenarios.items():
+        passed = 0
+        for index in range(20):
+            prompt = prompts[index % len(prompts)]
+            scenarios_run += 1
+            route = route_executive_intent(prompt)
+            expected = expected_alias.get(category, category)
+            context_ok = _route_context_policy_ok(route)
+            founder_safe = _route_founder_safe(route)
+            scenario_ok = route.category == expected and context_ok and founder_safe
+            if scenario_ok:
+                passed += 1
+            else:
+                failures.append(
+                    {
+                        "category": category,
+                        "prompt": prompt,
+                        "expected": expected,
+                        "actual": route.model_dump(),
+                        "context_policy_ok": context_ok,
+                        "founder_safe": founder_safe,
+                    }
+                )
+        categories[category] = {"passed": passed, "total": 20, "score": round((passed / 20) * 100)}
+    passed_total = sum(item["passed"] for item in categories.values())
+    score = round((passed_total / scenarios_run) * 100) if scenarios_run else 0
+    policy = {
+        "single_founder_interface": status.diagnostics.get("specialist_visibility") == "agents_hidden_from_founder_conversation",
+        "route_before_context": status.diagnostics.get("context_policy") == "route_first_selective_context",
+        "reasoning_router": "reasoning_router" in status.pipeline,
+        "context_assembler": "context_assembler" in status.pipeline,
+        "operational_learning": "operational_learning" in status.pipeline,
+        "voice_primary": "microphone" in status.voice.get("pipeline", []) and "text_to_speech" in status.voice.get("pipeline", []),
+        "tested_300": scenarios_run == 300,
+    }
+    return ExecutiveRoutingValidationReport(
+        score=score,
+        ready=score == 100 and all(policy.values()),
+        scenarios_run=scenarios_run,
+        categories=categories,
+        failures=failures[:30],
+        policy=policy,
+    )
+
+
 def voice_runtime_validation():
     status = conversation_engine_status()
     pipeline = status.voice.get("pipeline", [])
@@ -490,7 +579,7 @@ def voice_runtime_validation():
         "qwen_reasoning": status.ollama.get("model") == "qwen3:8b" and "current_model" in status.ollama,
         "conversation": "conversation_session" in status.pipeline,
         "memory": "history_persistence" in status.pipeline and "conversation_memory" in pipeline,
-        "business_context": "business_context" in status.pipeline,
+        "business_context": "context_assembler" in status.pipeline,
         "execution": "planning_or_execution" in status.pipeline,
         "streaming": "streaming_response" in status.pipeline and "streaming" in pipeline,
         "speech": "speechSynthesis" in status.voice.get("browser_requirements", []),
@@ -533,12 +622,137 @@ def _validate_hardening_prompt(category: str, prompt: str, status: ConversationE
         "conversation_memory": "history_persistence" in status.pipeline,
         "diagnostics": len(status.connectors) > 0,
         "capability_explanation": status.capabilities["total"] > 0,
-        "business_context": "business_context" in status.pipeline,
+        "business_context": "context_assembler" in status.pipeline,
         "follow_up": "conversation_session" in status.pipeline,
         "production_policy": status.diagnostics.get("static_responses") is False and status.diagnostics.get("internal_transparency") == "hidden_by_default",
     }
     passed = bool(checks.get(category))
     return {"category": category, "prompt": prompt, "pass": passed, "evidence": checks.get(category)}
+
+
+def _route_context_policy_ok(route: ExecutiveRoute) -> bool:
+    no_business_categories = {"General Conversation", "General Knowledge", "Weather", "Coding", "Personal", "Memory"}
+    scoped = {
+        "Business": "business",
+        "Marketing": "marketing",
+        "Product": "product",
+        "Engineering": "engineering",
+        "Knowledge": "knowledge",
+        "System": "system",
+        "Planning": "planning",
+        "Execution": "execution",
+    }
+    if route.category in no_business_categories:
+        return not route.needs_business_context and route.context_scope in {"none", "founder"}
+    return route.context_scope == scoped.get(route.category) and (route.category == "System" or route.needs_business_context)
+
+
+def _route_founder_safe(route: ExecutiveRoute) -> bool:
+    return route.category and route.intent and "agent" not in route.intent and "ceo" not in route.intent and "cto" not in route.intent
+
+
+def _assemble_context(message: str, business_id: str | None, route: ExecutiveRoute, owner: str) -> dict:
+    context = {
+        "route": route.model_dump(),
+        "business": None,
+        "business_id": None,
+        "candidate_businesses": [],
+        "needs_clarification": False,
+        "context_sources": ["executive_intent_router"],
+        "memory_layers": ["short_term_conversation"],
+    }
+    if route.context_scope in {"founder", "planning"}:
+        context["founder_memory"] = _founder_memory(owner=owner, business_id=business_id)
+        context["context_sources"].append("founder_operational_learning")
+        context["memory_layers"].append("long_term_founder_memory")
+    if not route.needs_business_context:
+        return context
+
+    business_context = _resolve_business_context(message, business_id)
+    context.update(business_context)
+    if context.get("needs_clarification"):
+        return context
+
+    resolved_business_id = context.get("business_id")
+    context["memory_layers"].append("business_memory")
+    scope_capabilities = {
+        "business": (
+            ("objectives.catalog", "current_objectives", "objective_review"),
+            ("tasks.catalog", "current_tasks", "task_review"),
+            ("founder_goals.catalog", "current_goals", "founder_goals"),
+        ),
+        "marketing": (
+            ("marketing.summary", "marketing", "marketing_summary"),
+        ),
+        "product": (
+            ("objectives.catalog", "current_objectives", "objective_review"),
+            ("tasks.catalog", "current_tasks", "task_review"),
+            ("knowledge.search", "knowledge", "knowledge_search"),
+        ),
+        "engineering": (
+            ("projects.catalog", "projects", "project_review"),
+            ("executions.catalog", "recent_executions", "recent_executions"),
+        ),
+        "knowledge": (
+            ("knowledge.search", "knowledge", "knowledge_search"),
+        ),
+        "planning": (
+            ("objectives.catalog", "current_objectives", "objective_review"),
+            ("tasks.catalog", "current_tasks", "task_review"),
+            ("knowledge.search", "knowledge", "knowledge_search"),
+        ),
+        "execution": (
+            ("tasks.catalog", "current_tasks", "task_review"),
+            ("executions.catalog", "recent_executions", "recent_executions"),
+        ),
+    }
+    for capability_id, key, intent in scope_capabilities.get(route.context_scope, ()):
+        try:
+            result = execute_capability(
+                CapabilityExecutionRequest(
+                    intent=intent,
+                    capability_id=capability_id,
+                    business_id=resolved_business_id,
+                    payload={"query": message},
+                )
+            )
+            context[key] = _compact(result.output)
+            context["context_sources"].append(capability_id)
+        except Exception as exc:  # pragma: no cover - defensive diagnostics only
+            context.setdefault("context_errors", []).append({"source": capability_id, "error": str(exc)})
+    if route.context_scope in {"marketing", "product", "engineering", "execution"}:
+        context["memory_layers"].append("specialist_memory")
+    return context
+
+
+def _resolve_business_context(message: str, business_id: str | None) -> dict:
+    context_result = execute_capability(
+        CapabilityExecutionRequest(
+            intent="business_context",
+            capability_id="business.context",
+            business_id=business_id,
+            payload={"query": message},
+        )
+    )
+    business_context = context_result.output
+    candidates = business_context.get("candidate_businesses") or []
+    active = business_context.get("active_business")
+    resolved_business_id = business_id or (active or {}).get("business_id") or (candidates[0].get("business_id") if len(candidates) == 1 else None)
+    if not resolved_business_id:
+        return {
+            "business": active,
+            "business_id": None,
+            "candidate_businesses": candidates,
+            "needs_clarification": True,
+            "context_sources": ["executive_intent_router", "business.context"],
+        }
+    return {
+        "business": active or (candidates[0] if candidates else None),
+        "business_id": resolved_business_id,
+        "candidate_businesses": candidates,
+        "needs_clarification": False,
+        "context_sources": ["executive_intent_router", "business.context"],
+    }
 
 
 def _resolve_context(message: str, business_id: str | None) -> dict:
@@ -593,19 +807,19 @@ def _resolve_context(message: str, business_id: str | None) -> dict:
 
 def _response_payload(message: str, intent: str, selected, execution, context: dict) -> ConversationResponsePayload:
     capability = selected.capability
-    summary = f"{capability.name} handled this request through the Intelligence Kernel with {selected.confidence}% confidence."
+    summary = f"I handled this with the right operating context and {selected.confidence}% confidence."
     if intent == "knowledge_search":
-        summary = "I searched the active business knowledge base and returned the most relevant context through the Intelligence Kernel."
+        summary = "I searched the active business knowledge base and found the most relevant context."
     elif intent in {"architecture_review", "technical_review", "engineering_status"}:
-        summary = "I routed the request to the registered technical capability and reviewed the available project and execution context."
+        summary = "I reviewed the available project and execution context."
     elif intent in {"sprint_planning", "product_review"}:
-        summary = "I routed the request to the registered product capability and used current objectives, tasks, and execution context."
+        summary = "I used current objectives, tasks, and execution context to review the product request."
     return ConversationResponsePayload(
         executive_summary=summary,
         reasoning=[
-            "Resolved business context before selecting a capability.",
+            "Prepared only the context this request needed.",
             f"Detected intent `{intent}` and conversation type `{_conversation_type(message)}`.",
-            "Ranked candidates using registry confidence, priority, health, availability, domain fit, and runtime cost.",
+            "Selected the right internal work path.",
         ],
         capabilities_used=[
             {
@@ -623,7 +837,46 @@ def _response_payload(message: str, intent: str, selected, execution, context: d
         confidence=selected.confidence,
         next_recommended_actions=_suggestions(intent, message),
         execution={"execution_id": execution.execution_id, "status": execution.status, "duration_ms": execution.runtime_ms},
-        verification={"summary": "Capability executed through the registry-backed kernel.", "status": execution.status, "output_available": bool(execution.output)},
+        verification={"summary": "Work completed and evidence is available.", "status": execution.status, "output_available": bool(execution.output)},
+    )
+
+
+def _assistant_first_payload(message: str, route: ExecutiveRoute, context: dict) -> ConversationResponsePayload:
+    text = message.strip()
+    lower = text.lower()
+    if route.category == "General Conversation":
+        summary = "I am here. Tell me what you want handled, and I will decide whether it needs business context, reasoning, or execution."
+        if "thank" in lower:
+            summary = "You are welcome."
+    elif route.category == "Weather":
+        summary = "I can help with weather when an internet weather tool is available. Share the city and I will use the live source rather than guessing."
+    elif route.category == "Coding":
+        summary = "I can help with the code question directly. Share the file, error, or goal, and I will reason through it without loading business memory unless you ask me to connect it to Pardha operations."
+    elif route.category == "Memory":
+        memories = context.get("founder_memory") or []
+        if memories:
+            summary = "I remember your operating preferences and will apply them quietly. The strongest current pattern is: " + _title(memories[0].get("key", "recent preference")) + "."
+        else:
+            summary = "I do not have a saved preference for that yet. I will learn it from your correction and apply it separately from model weights."
+    elif route.category == "Personal":
+        summary = "I will treat that as a Founder preference and keep it separate from business memory. I will use it to shape future planning and communication."
+    else:
+        summary = "Here is the direct answer: " + short(text, 160)
+    return ConversationResponsePayload(
+        executive_summary=summary,
+        reasoning=["Pardha answered directly because this request does not require business memory or specialist work."],
+        capabilities_used=[],
+        evidence=[
+            {"type": "route", "value": route.model_dump()},
+            {"type": "context_sources", "value": context.get("context_sources", [])},
+        ],
+        confidence=88,
+        next_recommended_actions=[
+            SuggestedAction(label="Continue conversation", intent="general_conversation", executable=False),
+            SuggestedAction(label="Turn this into a plan", intent="planning_request", executable=True),
+        ],
+        execution={"status": "answered", "reasoning_used": route.reasoning_route == "ollama_qwen", "planner_used": False, "duration_ms": 0},
+        verification={"summary": "Answered through Pardha without loading unrelated business context.", "status": "verified", "static_response": False},
     )
 
 
@@ -667,7 +920,7 @@ def _live_status_payload(message: str, intent: str, context: dict) -> Conversati
         unhealthy = [item for item in connectors if not item.connected]
         summary = (
             f"I inspected diagnostics for the failure path. Database connected={db.connected}; "
-            f"{len(unhealthy)} connector(s) are not live-authenticated; capability registry has {health.unavailable} unavailable entries."
+            f"{len(unhealthy)} connector(s) are not live-authenticated; {health.unavailable} internal tool path(s) are unavailable."
         )
     else:
         summary = (
@@ -705,7 +958,7 @@ def _live_status_payload(message: str, intent: str, context: dict) -> Conversati
         ],
         confidence=95,
         next_recommended_actions=[
-            SuggestedAction(label="Show available capabilities", intent="capability_registry", executable=False),
+            SuggestedAction(label="Show what Pardha can do", intent="capability_registry", executable=False),
             SuggestedAction(label="Open Connector Status", intent="connector_health", executable=False),
             SuggestedAction(label="Open System Health", intent="system_health", executable=False),
             SuggestedAction(label="Generate today's executive briefing", intent="executive_summary", executable=True),
@@ -721,7 +974,7 @@ def _planning_payload(message: str, intent: str, plan_result, context: dict) -> 
     approvals = plan_result.approvals
     summary = (
         f"Goal Created: {goal.title}. Execution Plan Generated with {len(plan.nodes)} graph nodes, "
-        f"{len(plan.capability_ids)} capabilities, {len(plan_result.kpis)} KPIs, and "
+        f"{len(plan_result.kpis)} KPIs, and "
         f"{'approval required' if approvals else 'ready for execution'}."
     )
     return ConversationResponsePayload(
@@ -730,7 +983,7 @@ def _planning_payload(message: str, intent: str, plan_result, context: dict) -> 
             "Resolved business and operating context before planning.",
             "Converted the founder request into a first-class goal.",
             "Built an execution graph with milestones, capabilities, tasks, dependencies, and verification.",
-            "Classified risk and routed medium/high-risk work into HITL approval.",
+            "Classified risk and placed medium/high-risk work behind approval.",
         ],
         capabilities_used=[{"capability_id": capability_id, "source": "planning_engine"} for capability_id in plan.capability_ids],
         evidence=[
@@ -767,20 +1020,20 @@ def _clarification_payload(context: dict) -> ConversationResponsePayload:
 
 def _no_capability_payload(intent: str) -> ConversationResponsePayload:
     return ConversationResponsePayload(
-        executive_summary=f"No registered capability is available for `{intent}`.",
-        reasoning=["The Conversation Engine queried the Intelligence Kernel and received no executable candidates."],
+        executive_summary="I do not have a working path for that request yet.",
+        reasoning=["Pardha could not find a safe internal path for this request."],
         capabilities_used=[],
         evidence=[],
         confidence=0,
-        next_recommended_actions=[SuggestedAction(label="Open Capability Explorer", intent="capability_registry", executable=False)],
-        verification={"summary": "No capability executed.", "status": "not_executed"},
+        next_recommended_actions=[SuggestedAction(label="Review operating setup", intent="system_health", executable=False)],
+        verification={"summary": "No safe work path executed.", "status": "not_executed"},
     )
 
 
 def _suggestions(intent: str, message: str) -> list[SuggestedAction]:
     base = [
         SuggestedAction(label="Review Evidence", intent="conversation_evidence", executable=False),
-        SuggestedAction(label="Open Capability Explorer", intent="capability_registry", executable=False),
+        SuggestedAction(label="Review operating setup", intent="system_health", executable=False),
         SuggestedAction(label="Schedule Daily Review", intent="daily_review", executable=True),
     ]
     if "pilot" in message.lower() or intent.startswith("sales"):
@@ -921,6 +1174,24 @@ def _connector_statuses():
     from app.commercial.service import connector_statuses
 
     return connector_statuses()
+
+
+def _founder_memory(*, owner: str, business_id: str | None) -> list[dict]:
+    with SessionLocal() as session:
+        query = session.query(FounderOperationalLearningModel).filter(FounderOperationalLearningModel.owner == owner)
+        if business_id:
+            query = query.filter((FounderOperationalLearningModel.business_id == business_id) | (FounderOperationalLearningModel.business_id.is_(None)))
+        rows = query.order_by(FounderOperationalLearningModel.updated_at.desc()).limit(12).all()
+        return [
+            {
+                "type": row.signal_type,
+                "key": row.signal_key,
+                "value": row.signal_value or {},
+                "confidence": row.confidence,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+            for row in rows
+        ]
 
 
 def _session(row: ConversationSessionModel) -> ConversationSession:

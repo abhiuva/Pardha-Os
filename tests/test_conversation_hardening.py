@@ -44,7 +44,7 @@ class ConversationHardeningTestCase(unittest.TestCase):
         payload = response.json()
         content = payload["assistant_message"]["content"]
         self.assertIn("Here is what I can do right now", content)
-        self.assertIn("registered operating capabilities", content)
+        self.assertIn("internal operating paths", content)
         self.assertIn("runtime_inspection", payload["response"])
         self.assertFalse(payload["response"]["verification"]["static_response"])
 
