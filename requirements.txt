@@ -7,3 +7,4 @@ httpx
 apscheduler
 watchdog
 python-multipart
+eval_type_backport
