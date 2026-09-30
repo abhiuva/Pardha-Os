@@ -61,3 +61,23 @@ class KnowledgeUploadResult(BaseModel):
 class KnowledgeDeleteResult(BaseModel):
     knowledge_id: UUID
     deleted: bool
+
+
+class KnowledgeSourceSummary(BaseModel):
+    source: str
+    source_uri: Optional[str] = None
+    version: Optional[str] = None
+    category: str
+    title: str
+
+
+class KnowledgeSummary(BaseModel):
+    business_id: str
+    business_name: str
+    total_records: int
+    categories: Dict[str, int] = Field(default_factory=dict)
+    sources: List[KnowledgeSourceSummary] = Field(default_factory=list)
+    expected_sources: List[str] = Field(default_factory=list)
+    missing_expected_sources: List[str] = Field(default_factory=list)
+    context_ready: bool
+    generated_at: datetime

@@ -19,6 +19,7 @@ from app.db.models import Objective as ObjectiveModel
 from app.db.models import Project as ProjectModel
 from app.demo.schemas import DemoSeedResult, FounderCopilotResponse
 from app.knowledge.schemas import KnowledgeCreate
+from app.knowledge.service import load_dp360_knowledge_context
 from app.knowledge.service import create_knowledge
 
 
@@ -114,6 +115,7 @@ DEMO_AGENTS = (
 
 def ensure_demo_data() -> DemoSeedResult:
     _ensure_demo_agents()
+    load_dp360_knowledge_context()
     businesses: list[Business] = []
     objectives_created = 0
     knowledge_created = 0

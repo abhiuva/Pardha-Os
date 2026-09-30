@@ -43,20 +43,26 @@ class CommercialReadinessTestCase(unittest.TestCase):
             "GOOGLE_CALENDAR_CLIENT_SECRET",
             "GOOGLE_CALENDAR_REFRESH_TOKEN",
             "GITHUB_TOKEN",
+            "HUBSPOT_ACCESS_TOKEN",
+            "META_ACCESS_TOKEN",
+            "META_AD_ACCOUNT_ID",
+            "META_INSTAGRAM_ACCOUNT_ID",
             "VSCODE_PID",
             "PARDHA_OLLAMA_ENABLED",
         ]:
             os.environ.pop(key, None)
+        os.environ["PARDHA_CONNECTOR_MODE"] = "mock"
 
         response = self.client.get("/commercial/connectors/status")
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         providers = {item["provider"] for item in payload}
-        self.assertEqual(providers, {"gmail", "outlook", "whatsapp", "jira", "google_calendar", "github", "vscode", "ollama"})
+        self.assertEqual(providers, {"gmail", "outlook", "whatsapp", "jira", "google_calendar", "github", "hubspot", "meta", "instagram", "vscode", "ollama"})
         self.assertTrue(all(item["connected"] is False for item in payload))
-        for provider in ("gmail", "outlook", "whatsapp", "jira", "google_calendar", "github", "vscode", "ollama"):
+        for provider in ("gmail", "outlook", "whatsapp", "jira", "google_calendar", "github", "hubspot", "meta", "instagram", "vscode", "ollama"):
             self.assertIn(provider, providers)
+        self.assertEqual({item["provider"]: item["authentication_status"] for item in payload}["hubspot"], "mock_contract")
 
     def test_dp360_demo_load_populates_customer_demo_surfaces(self):
         response = self.client.post("/commercial/demo/dp360")

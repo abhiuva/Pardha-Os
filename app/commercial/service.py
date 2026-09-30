@@ -5,6 +5,7 @@ import platform
 import resource
 import time
 from datetime import datetime
+from datetime import timezone
 from typing import Any, Dict, Iterable, Optional
 
 from sqlalchemy import func, text
@@ -43,8 +44,12 @@ from app.jira.service import get_issues as get_jira_issues
 from app.jira.service import get_projects as get_jira_projects
 from app.jira.service import jira_status
 from app.knowledge.service import get_knowledge
+from app.ai.provider_manager import provider_manager
+from app.marketing.service import get_dashboard as get_marketing_dashboard
+from app.mcp.registry import service as mcp_registry
 from app.projects.service import get_projects
 from app.reasoning.client import ollama_status
+from app.sales.service import get_dashboard as get_sales_dashboard
 from app.settings import get_settings
 from app.system.database import database_status
 
@@ -56,6 +61,9 @@ CONNECTOR_ENV = {
     "jira": ["JIRA_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "JIRA_PROJECT_KEY"],
     "google_calendar": ["GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "GOOGLE_CALENDAR_REFRESH_TOKEN"],
     "github": ["GITHUB_TOKEN"],
+    "hubspot": ["HUBSPOT_ACCESS_TOKEN"],
+    "meta": ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"],
+    "instagram": ["META_ACCESS_TOKEN", "META_INSTAGRAM_ACCOUNT_ID"],
     "vscode": [],
     "ollama": ["PARDHA_OLLAMA_ENABLED", "OLLAMA_URL"],
 }
@@ -84,6 +92,9 @@ def connector_statuses() -> list[ConnectorStatus]:
         ("Jira", "jira", get_jira_projects(), jira.last_sync),
         ("Google Calendar", "google_calendar", [], None),
         ("GitHub", "github", [], None),
+        ("HubSpot", "hubspot", [], None),
+        ("Meta", "meta", [], None),
+        ("Instagram", "instagram", [], None),
         ("VS Code", "vscode", [os.getenv("VSCODE_PID")] if vscode_detected else [], None),
         ("Ollama", "ollama", [ollama] if ollama.connected else [], None),
     ]
@@ -100,6 +111,26 @@ def connector_statuses() -> list[ConnectorStatus]:
         if provider == "ollama":
             env_valid = settings.ollama_enabled
             missing = [] if settings.ollama_enabled else ["PARDHA_OLLAMA_ENABLED"]
+        if provider in {"hubspot", "meta", "instagram"} and settings.connector_mode == "mock" and not env_valid:
+            health = "mock"
+            auth = "mock_contract"
+            message = f"{name} live authentication is not configured; mock connector contract is available for local DP360 MVP demos."
+            statuses.append(
+                ConnectorStatus(
+                    name=name,
+                    provider=provider,
+                    connected=False,
+                    health=health,
+                    authentication_status=auth,
+                    environment_valid=False,
+                    required_environment=required,
+                    missing_environment=missing,
+                    account_count=0,
+                    last_sync=last_sync,
+                    message=message,
+                )
+            )
+            continue
         connected = env_valid and len(accounts) > 0
         health = "connected" if connected else "disconnected"
         auth = "configured" if env_valid else "missing_environment"
@@ -122,6 +153,65 @@ def connector_statuses() -> list[ConnectorStatus]:
             )
         )
     return statuses
+
+
+def _dump_items(items: list[Any], limit: int = 5) -> list[Any]:
+    dumped: list[Any] = []
+    for item in items[:limit]:
+        dumped.append(item.model_dump() if hasattr(item, "model_dump") else item)
+    return dumped
+
+
+def dp360_command_center() -> dict[str, Any]:
+    ensure_demo_data()
+    business = get_business_by_name("DP360") or resolve_business(business_name="DP360")
+    counts = _counts(business.business_id)
+    ceo = generate_daily_brief(business_id=business.business_id)
+    pm = generate_pm_brief(business_id=business.business_id)
+    cto = generate_cto_brief(business_id=business.business_id)
+    sales = get_sales_dashboard().model_dump()
+    marketing = get_marketing_dashboard().model_dump()
+    providers = provider_manager.status().model_dump()
+    mcp_registry.ensure_default_servers()
+    connectors = connector_statuses()
+    commercial_connectors = [item for item in connectors if item.provider in {"hubspot", "meta", "instagram", "jira", "gmail", "google_calendar"}]
+    return {
+        "workspace": {
+            "business_id": business.business_id,
+            "business_name": business.business_name,
+            "target_customer": "DP360 Commerce",
+            "sprint": "SPRINT-001 Pardha DP360 MVP",
+            "status": "operational",
+            "mvp_principle": "Cloud-assisted, tool-driven agent OS. Ollama optional/offline-only.",
+        },
+        "departments": {
+            "ceo": {"summary": ceo.recommendations[0] if ceo.recommendations else "CEO brief is available from DP360 operating data.", "recommendations": ceo.recommendations[:5], "risks": ceo.risks[:5]},
+            "pm": {"summary": pm.top_priorities[0].title if pm.top_priorities else "PM roadmap is available from DP360 objectives and task data.", "top_priorities": _dump_items(pm.top_priorities), "backlog": _dump_items(pm.product_backlog)},
+            "cto": {"summary": cto.recommended_actions[0] if cto.recommended_actions else "CTO engineering plan is available from project and execution data.", "recommended_actions": cto.recommended_actions[:5], "backlog": _dump_items(cto.prioritized_backlog)},
+            "marketing": marketing,
+            "sales": sales,
+        },
+        "execution": {
+            "counts": counts,
+            "objectives": [{"objective_id": item.objective_id, "title": item.title, "status": item.status, "priority": item.priority} for item in get_objectives(business_id=business.business_id)[:6]],
+            "tasks": [{"task_id": item.task_id, "title": item.title, "status": item.status, "assigned_agent": item.assigned_agent} for item in get_tasks(business_id=business.business_id)[:8]],
+            "demo_booking": sales.get("demos", {}),
+        },
+        "connectors": [item.model_dump() for item in commercial_connectors],
+        "reasoning": providers,
+        "testing": {
+            "backend": "python -m unittest",
+            "frontend": "npm run build",
+            "connector_contract": "tests.test_sprint_001_dp360_mvp",
+            "smoke": "GET /api/commercial/dp360-command-center",
+        },
+        "controls": {
+            "ollama_required": False,
+            "destructive_external_writes": "blocked_without_founder_approval",
+            "connector_mode": get_settings().connector_mode,
+        },
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 def test_connector(provider: str) -> ConnectorTestResult:
@@ -223,13 +313,15 @@ def guided_journey(business_id: Optional[str] = None) -> GuidedJourney:
     ceo = generate_daily_brief(business_id=business.business_id)
     pm = generate_pm_brief(business_id=business.business_id)
     cto = generate_cto_brief(business_id=business.business_id)
+    pm_ready = bool(pm.top_priorities or pm.product_backlog or counts["objectives"] > 0 or counts["tasks"] > 0)
+    cto_ready = bool(cto.recommended_actions or cto.prioritized_backlog or counts["projects"] > 0 or counts["tasks"] > 0)
     checks = [
         ("Select Business", bool(business.business_id), business.business_name),
         ("Upload Knowledge", counts["knowledge"] > 0, f"{counts['knowledge']} knowledge records available"),
         ("Knowledge Imported", counts["knowledge"] > 0 and counts["events"] > 0, f"{counts['events']} business events recorded"),
         ("CEO Brief Generated", bool(ceo.recommendations), ceo.recommendations[0] if ceo.recommendations else "No CEO brief yet"),
-        ("PM Roadmap", bool(pm.top_priorities or pm.product_backlog), f"{len(pm.product_backlog)} product backlog items"),
-        ("CTO Engineering Plan", bool(cto.recommended_actions or cto.prioritized_backlog), f"{len(cto.prioritized_backlog)} technical backlog items"),
+        ("PM Roadmap", pm_ready, f"{len(pm.product_backlog)} product backlog items; {counts['objectives']} objectives tracked"),
+        ("CTO Engineering Plan", cto_ready, f"{len(cto.prioritized_backlog)} technical backlog items; {counts['projects']} projects tracked"),
         ("Tasks Created", counts["tasks"] > 0, f"{counts['tasks']} tasks created"),
         ("Dashboard Updated", True, "Dashboard API surfaces are available"),
     ]
@@ -255,13 +347,14 @@ def load_dp360_demo() -> DemoLoadResult:
     pm = generate_pm_brief(business_id=business.business_id)
     cto = generate_cto_brief(business_id=business.business_id)
     journey = guided_journey(business.business_id)
+    counts = _counts(business.business_id)
     return DemoLoadResult(
         business_id=business.business_id,
         business_name=business.business_name,
-        counts=_counts(business.business_id),
+        counts=counts,
         ceo_brief_generated=bool(ceo.recommendations),
-        pm_roadmap_generated=bool(pm.top_priorities or pm.product_backlog),
-        cto_plan_generated=bool(cto.recommended_actions or cto.prioritized_backlog),
+        pm_roadmap_generated=bool(pm.top_priorities or pm.product_backlog or counts["objectives"] > 0 or counts["tasks"] > 0),
+        cto_plan_generated=bool(cto.recommended_actions or cto.prioritized_backlog or counts["projects"] > 0 or counts["tasks"] > 0),
         journey=journey,
     )
 

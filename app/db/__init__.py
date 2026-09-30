@@ -46,6 +46,9 @@ def _reconcile_sqlite_schema() -> None:
             "tokens": "INTEGER NOT NULL DEFAULT 0",
             "latency": "INTEGER NOT NULL DEFAULT 0",
         },
+        "agent_reasoning": {
+            "provider_metadata": "JSON DEFAULT '{}'",
+        },
     }
     with engine.begin() as connection:
         inspector = inspect(connection)

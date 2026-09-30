@@ -26,6 +26,7 @@ _last_latency_ms: int | None = None
 _last_token_count: int | None = None
 _last_used_at: datetime | None = None
 _last_error: str | None = None
+_runtime_enabled_override: bool | None = None
 _idle_timer: threading.Timer | None = None
 
 
@@ -62,11 +63,21 @@ class ModelManagerAction(BaseModel):
 
 
 def _enabled() -> bool:
-    return get_settings().ollama_enabled
+    with _state_lock:
+        override = _runtime_enabled_override
+    return get_settings().ollama_enabled if override is None else override
 
 
-def _request(path: str, payload: Optional[dict] = None) -> dict:
-    if not _enabled():
+def set_ollama_enabled(enabled: bool) -> None:
+    global _runtime_enabled_override
+    with _state_lock:
+        _runtime_enabled_override = enabled
+    if not enabled:
+        _mark_error("Manual Ollama reasoning is disabled.")
+
+
+def _request(path: str, payload: Optional[dict] = None, timeout: float | None = None, require_enabled: bool = True) -> dict:
+    if require_enabled and not _enabled():
         raise OllamaUnavailable("Ollama reasoning is disabled.")
 
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
@@ -77,7 +88,11 @@ def _request(path: str, payload: Optional[dict] = None) -> dict:
         method="POST" if body else "GET",
     )
     try:
-        with urlopen(request, timeout=get_settings().ollama_timeout) as response:
+        settings = get_settings()
+        effective_timeout = timeout
+        if effective_timeout is None:
+            effective_timeout = settings.ollama_inference_timeout if path == "/api/generate" and payload is not None else settings.ollama_connection_timeout
+        with urlopen(request, timeout=effective_timeout) as response:
             return json.loads(response.read().decode("utf-8"))
     except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
         raise OllamaUnavailable(f"Local Ollama request failed: {exc}") from exc
@@ -215,7 +230,17 @@ def generate_response(prompt: str, system_prompt: str | None = None, model: str 
             _active_reasoning += 1
         try:
             started = time.monotonic()
-            result = _request("/api/generate", payload)
+            attempts = get_settings().ollama_retry_limit + 1
+            last_exception: OllamaUnavailable | None = None
+            result: dict | None = None
+            for _attempt in range(attempts):
+                try:
+                    result = _request("/api/generate", payload)
+                    break
+                except OllamaUnavailable as exc:
+                    last_exception = exc
+            if result is None:
+                raise last_exception or OllamaUnavailable("Local Ollama inference failed.")
             response = result.get("response")
             with _state_lock:
                 _last_latency_ms = int((time.monotonic() - started) * 1000)
@@ -255,7 +280,7 @@ def ollama_status() -> OllamaStatus:
         tokens = _last_token_count
         last_used = _last_used_at
         last_error = _last_error
-    if not settings.ollama_enabled:
+    if not _enabled():
         return OllamaStatus(
             connected=False,
             model=selected_model,

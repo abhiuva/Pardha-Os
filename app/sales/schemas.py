@@ -74,6 +74,9 @@ class SalesLeadDetail(BaseModel):
     proposal_request: Optional[str] = None
     demo_invitation: Optional[str] = None
     next_action: Optional[str] = None
+    qualification_score: Optional[int] = None
+    qualification_status: Optional[str] = None
+    qualification_recommendation: Optional[str] = None
     created_at: Optional[str] = None
 
 
@@ -89,6 +92,36 @@ class SalesOutreachPackage(BaseModel):
     demo_invitation: str
     research_source: str
     decision_maker_source: str
+
+
+class LeadQualificationRequest(BaseModel):
+    business_type: str = Field(..., min_length=1)
+    location: str = Field(..., min_length=1)
+    stage: str = Field(..., min_length=1)
+    budget: int = Field(default=0, ge=0)
+    timeline: str = Field(..., min_length=1)
+    requirement: str = Field(..., min_length=1)
+    source: str = Field(..., min_length=1)
+
+
+class LeadQualificationResult(BaseModel):
+    qualification_id: str
+    lead_id: str
+    business_type: str
+    location: str
+    stage: str
+    budget: int
+    timeline: str
+    requirement: str
+    source: str
+    score: int
+    qualification_status: str
+    missing_fields: List[str] = Field(default_factory=list)
+    scoring_factors: Dict[str, Any] = Field(default_factory=dict)
+    recommendation: str
+    hubspot_event_payload: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
 
 
 class DemoScheduleRequest(BaseModel):
@@ -127,6 +160,80 @@ class SalesPipelineResponse(BaseModel):
 
 class DemoScheduleResponse(BaseModel):
     upcoming_demos: List[Dict[str, Any]]
+
+
+class CalendarAvailabilityResponse(BaseModel):
+    mode: str
+    timezone: str
+    slots: List[Dict[str, Any]]
+
+
+class DemoBookingRequest(BaseModel):
+    requested_slot: Optional[datetime] = None
+    meeting_url: Optional[str] = None
+    owner: str = "Founder"
+    notes: str = ""
+
+
+class DemoBookingStatusRequest(BaseModel):
+    status: str
+    scheduled_at: Optional[datetime] = None
+    meeting_url: Optional[str] = None
+    notes: str = ""
+
+
+class DemoBookingRecord(BaseModel):
+    booking_id: str
+    business_id: str
+    lead_id: str
+    company: str
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    status: str
+    requested_slot: Optional[datetime]
+    scheduled_at: Optional[datetime]
+    meeting_url: Optional[str]
+    owner: str
+    calendar_mode: str
+    hubspot_event_payload: Dict[str, Any] = Field(default_factory=dict)
+    notes: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class PostDemoDraftRequest(BaseModel):
+    demo_summary: str = Field(..., min_length=1)
+    pain_points: List[str] = Field(default_factory=list)
+    decision_makers: List[str] = Field(default_factory=list)
+    next_action: str = "Schedule proposal review"
+    commercial_cta: str = "Approve the DP360 Commerce pilot proposal"
+    created_by: str = "Sales Executive"
+
+
+class PostDemoDraftRecord(BaseModel):
+    draft_id: str
+    business_id: str
+    booking_id: str
+    lead_id: str
+    deal_id: Optional[str]
+    company: str
+    contact_name: Optional[str]
+    contact_email: Optional[str]
+    demo_summary: str
+    pain_points: List[str]
+    dp360_fit: str
+    next_action: str
+    commercial_cta: str
+    follow_up_email: str
+    proposal_draft: str
+    approval_status: str
+    external_send_blocked: bool
+    hubspot_event_payload: Dict[str, Any] = Field(default_factory=dict)
+    reasoning_provider: str
+    reasoning_model: str
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class SalesDashboard(BaseModel):

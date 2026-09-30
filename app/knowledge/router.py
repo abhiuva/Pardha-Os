@@ -2,12 +2,14 @@ from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 
-from app.knowledge.schemas import Knowledge, KnowledgeCategory, KnowledgeCreate, KnowledgeDeleteResult, KnowledgeUploadResult
+from app.knowledge.schemas import Knowledge, KnowledgeCategory, KnowledgeCreate, KnowledgeDeleteResult, KnowledgeSummary, KnowledgeUploadResult
 from app.knowledge.service import (
     create_knowledge,
     delete_knowledge,
     get_knowledge,
     get_knowledge_by_business,
+    get_knowledge_summary,
+    load_dp360_knowledge_context,
     search_knowledge,
     upload_knowledge_files,
 )
@@ -20,6 +22,19 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 @router.get("/imports", response_model=list[KnowledgeImport])
 def get_knowledge_imports_route():
     return get_knowledge_imports()
+
+
+@router.get("/summary", response_model=KnowledgeSummary)
+def get_knowledge_summary_route(
+    business_name: Optional[str] = Query(default=None),
+    business_id: Optional[str] = Query(default=None),
+):
+    return get_knowledge_summary(business_name=business_name, business_id=business_id)
+
+
+@router.post("/dp360/load", response_model=KnowledgeSummary)
+def load_dp360_knowledge_context_route():
+    return load_dp360_knowledge_context()
 
 
 @router.post("", response_model=Knowledge, status_code=status.HTTP_201_CREATED)

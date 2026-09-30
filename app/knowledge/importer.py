@@ -131,7 +131,11 @@ def import_knowledge_file(file_path: Path | str, root: Optional[Path] = None) ->
             .first()
         )
         if existing is not None:
-            return None
+            existing_knowledge = session.get(KnowledgeModel, existing.knowledge_id)
+            if existing_knowledge is not None:
+                return None
+            session.delete(existing)
+            session.flush()
 
         session.add(
             KnowledgeModel(

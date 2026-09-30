@@ -14,6 +14,7 @@ from app.db.models import (
     RuntimeQueueItem,
 )
 from app.reasoning.client import ollama_status
+from app.ai.provider_manager import provider_manager
 from app.system.database import database_status
 
 
@@ -23,6 +24,7 @@ def inspect_runtime(message: str = "", context: dict[str, Any] | None = None) ->
     health = capability_health()
     connectors = connector_statuses()
     ollama = ollama_status()
+    providers = provider_manager.status()
     business_id = (context or {}).get("business_id")
 
     with SessionLocal() as session:
@@ -73,6 +75,7 @@ def inspect_runtime(message: str = "", context: dict[str, Any] | None = None) ->
         },
         "connectors": [item.model_dump(mode="json") for item in connectors],
         "ollama": ollama.model_dump(mode="json"),
+        "ai_providers": providers.model_dump(mode="json"),
         "runtime": {"running_executions": running, "queued_items": queue},
         "learning": [
             {

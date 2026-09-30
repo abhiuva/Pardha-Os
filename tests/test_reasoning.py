@@ -10,6 +10,7 @@ from app.db import SessionLocal, init_db
 from app.db.models import AgentReasoning as AgentReasoningModel
 from app.main import app
 from app.reasoning.client import OllamaUnavailable, ensure_ollama_running, generate_response, switch_model
+from app.reasoning.gateway import ReasoningGatewayResult
 from app.reasoning.service import get_reasoning, reason_for_agent
 
 
@@ -31,27 +32,29 @@ class ReasoningTestCase(unittest.TestCase):
             session.commit()
 
     @patch("app.reasoning.service.build_business_context", return_value='{"active_objectives": []}')
-    @patch("app.reasoning.service.generate_response", return_value="Use a three-school pilot with measurable targets.")
-    def test_persists_local_ollama_reasoning(self, generate_response, _context):
+    @patch("app.reasoning.service.reasoning_gateway.generate", return_value=ReasoningGatewayResult(response="Use a three-school pilot with measurable targets.", provider="ollama", model="qwen3:8b", source="ollama", metadata={"provider": "ollama", "fallback_used": False}))
+    def test_persists_local_ollama_reasoning(self, gateway_generate, _context):
         reasoning = reason_for_agent("ceo", "fallback")
 
         self.assertEqual(reasoning.source, "ollama")
         self.assertEqual(reasoning.model, "qwen3:8b")
+        self.assertEqual(reasoning.provider_metadata["provider"], "ollama")
         self.assertIn("three-school pilot", reasoning.response)
         self.assertIn("strategic analysis", reasoning.prompt)
-        generate_response.assert_called_once()
+        gateway_generate.assert_called_once()
 
     @patch("app.reasoning.service.build_business_context", return_value='{"active_objectives": []}')
-    @patch("app.reasoning.service.generate_response", side_effect=OllamaUnavailable("offline"))
+    @patch("app.reasoning.service.reasoning_gateway.generate", return_value=ReasoningGatewayResult(response="Review architecture boundaries.", provider="deterministic", model="pardha-deterministic-runtime", source="deterministic_fallback", metadata={"requested_provider": "ollama", "fallback_provider": "deterministic", "fallback_reason": "offline"}))
     def test_persists_deterministic_fallback_when_ollama_is_unavailable(self, _generate, _context):
         reasoning = reason_for_agent("cto", "Review architecture boundaries.")
 
         self.assertEqual(reasoning.source, "deterministic_fallback")
-        self.assertEqual(reasoning.model, "deterministic")
+        self.assertEqual(reasoning.model, "pardha-deterministic-runtime")
         self.assertEqual(reasoning.response, "Review architecture boundaries.")
+        self.assertEqual(reasoning.provider_metadata["fallback_provider"], "deterministic")
 
     @patch("app.reasoning.service.build_business_context", return_value='{"active_objectives": []}')
-    @patch("app.reasoning.service.generate_response", return_value="Prioritize the pilot backlog.")
+    @patch("app.reasoning.service.reasoning_gateway.generate", return_value=ReasoningGatewayResult(response="Prioritize the pilot backlog.", provider="ollama", model="qwen3:8b", source="ollama", metadata={"provider": "ollama"}))
     def test_agent_reasoning_endpoints_return_filtered_history(self, _generate, _context):
         reason_for_agent("pm", "fallback")
         reason_for_agent("ceo", "fallback")
@@ -66,17 +69,17 @@ class ReasoningTestCase(unittest.TestCase):
         self.assertEqual(len(get_reasoning("pm")), 1)
 
     @patch("app.reasoning.service.build_business_context", return_value='{"active_objectives": []}')
-    @patch("app.reasoning.service.generate_response", return_value="Manual CEO recommendation.")
+    @patch("app.reasoning.service.reasoning_gateway.generate", return_value=ReasoningGatewayResult(response="Manual CEO recommendation.", provider="ollama", model="llama3.2:3b", source="ollama", metadata={"provider": "ollama"}))
     def test_manual_reasoning_endpoint_invokes_default_model(self, generate, _context):
         response = self.client.post("/agents/ceo/reason")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["model"], "qwen3:8b")
+        self.assertEqual(response.json()["model"], "llama3.2:3b")
         self.assertEqual(response.json()["source"], "ollama")
-        self.assertEqual(generate.call_args.args[2], "qwen3:8b")
+        self.assertEqual(generate.call_args.args[2], "llama3.2:3b")
 
     @patch("app.reasoning.service.build_business_context", return_value='{"active_objectives": []}')
-    @patch("app.reasoning.service.generate_response", return_value="Advanced CTO recommendation.")
+    @patch("app.reasoning.service.reasoning_gateway.generate", return_value=ReasoningGatewayResult(response="Advanced CTO recommendation.", provider="ollama", model="qwen3:8b", source="ollama", metadata={"provider": "ollama"}))
     def test_advanced_model_requires_explicit_request(self, generate, _context):
         response = self.client.post("/agents/cto/reason", json={"model": "qwen3:8b"})
 
@@ -84,7 +87,7 @@ class ReasoningTestCase(unittest.TestCase):
         self.assertEqual(response.json()["model"], "qwen3:8b")
         self.assertEqual(generate.call_args.args[2], "qwen3:8b")
 
-    @patch("app.reasoning.service.generate_response")
+    @patch("app.reasoning.service.reasoning_gateway.generate")
     def test_briefs_and_objectives_never_invoke_ollama(self, generate):
         self.client.get("/agents/ceo/brief")
         self.client.get("/agents/cto/brief")

@@ -1,10 +1,17 @@
 from fastapi import APIRouter
 
 from app.reasoning.schemas import AgentReasoning, ReasoningRequest
+from app.reasoning.gateway import reasoning_gateway
 from app.reasoning.service import get_reasoning, manual_reason_for_agent
 
 
 router = APIRouter(prefix="/agents", tags=["reasoning"])
+health_router = APIRouter(tags=["reasoning"])
+
+
+@health_router.get("/reasoning/health")
+def get_reasoning_health():
+    return reasoning_gateway.health()
 
 
 @router.get("/ceo/reasoning", response_model=list[AgentReasoning])

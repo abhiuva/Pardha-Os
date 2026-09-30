@@ -395,6 +395,7 @@ class AgentReasoning(Base):
     response = Column(Text, nullable=False)
     model = Column(String, nullable=False, index=True)
     source = Column(String, nullable=False, index=True)
+    provider_metadata = Column(JSON, nullable=False, default=dict)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
 
 
@@ -460,6 +461,76 @@ class SalesLead(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
 
+class SalesLeadQualification(Base):
+    __tablename__ = "sales_lead_qualifications"
+
+    qualification_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    lead_id = Column(String(36), ForeignKey("sales_leads.lead_id"), nullable=False, unique=True, index=True)
+    business_type = Column(String, nullable=False, index=True)
+    location = Column(String, nullable=False, index=True)
+    stage = Column(String, nullable=False, index=True)
+    budget = Column(Integer, nullable=False, default=0, index=True)
+    timeline = Column(String, nullable=False, index=True)
+    requirement = Column(Text, nullable=False)
+    source = Column(String, nullable=False, index=True)
+    score = Column(Integer, nullable=False, default=0, index=True)
+    qualification_status = Column(String, nullable=False, default="new", index=True)
+    missing_fields = Column(JSON, nullable=False, default=list)
+    scoring_factors = Column(JSON, nullable=False, default=dict)
+    recommendation = Column(Text, nullable=False, default="")
+    hubspot_event_payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class SalesDemoBooking(Base):
+    __tablename__ = "sales_demo_bookings"
+
+    booking_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    lead_id = Column(String(36), ForeignKey("sales_leads.lead_id"), nullable=False, index=True)
+    company_id = Column(String(36), ForeignKey("sales_companies.company_id"), nullable=False, index=True)
+    contact_id = Column(String(36), ForeignKey("sales_contacts.contact_id"), nullable=True, index=True)
+    status = Column(String, nullable=False, default="requested", index=True)
+    requested_slot = Column(DateTime(timezone=True), nullable=True, index=True)
+    scheduled_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    meeting_url = Column(String, nullable=True)
+    owner = Column(String, nullable=False, default="Founder", index=True)
+    calendar_mode = Column(String, nullable=False, default="mock", index=True)
+    hubspot_event_payload = Column(JSON, nullable=False, default=dict)
+    notes = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class SalesPostDemoDraft(Base):
+    __tablename__ = "sales_post_demo_drafts"
+
+    draft_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    booking_id = Column(String(36), ForeignKey("sales_demo_bookings.booking_id"), nullable=False, index=True)
+    lead_id = Column(String(36), ForeignKey("sales_leads.lead_id"), nullable=False, index=True)
+    deal_id = Column(String(36), ForeignKey("sales_deals.deal_id"), nullable=True, index=True)
+    company_id = Column(String(36), ForeignKey("sales_companies.company_id"), nullable=False, index=True)
+    contact_id = Column(String(36), ForeignKey("sales_contacts.contact_id"), nullable=True, index=True)
+    demo_summary = Column(Text, nullable=False)
+    pain_points = Column(JSON, nullable=False, default=list)
+    dp360_fit = Column(Text, nullable=False)
+    next_action = Column(Text, nullable=False)
+    commercial_cta = Column(Text, nullable=False)
+    follow_up_email = Column(Text, nullable=False)
+    proposal_draft = Column(Text, nullable=False)
+    approval_status = Column(String, nullable=False, default="pending", index=True)
+    external_send_blocked = Column(Integer, nullable=False, default=1, index=True)
+    hubspot_event_payload = Column(JSON, nullable=False, default=dict)
+    reasoning_provider = Column(String, nullable=False, default="deterministic", index=True)
+    reasoning_model = Column(String, nullable=False, default="deterministic", index=True)
+    created_by = Column(String, nullable=False, default="Sales Executive", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
 class SalesDeal(Base):
     __tablename__ = "sales_deals"
 
@@ -485,6 +556,47 @@ class SalesActivity(Base):
     due_date = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class HubSpotConnectorConfig(Base):
+    __tablename__ = "hubspot_connector_configs"
+
+    config_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, unique=True, index=True)
+    portal_id = Column(String, nullable=True, index=True)
+    status = Column(String, nullable=False, default="not_configured", index=True)
+    write_mode = Column(String, nullable=False, default="disabled", index=True)
+    scopes = Column(JSON, nullable=False, default=list)
+    configuration = Column(JSON, nullable=False, default=dict)
+    secret_reference = Column(String, nullable=True, index=True)
+    last_checked_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class HubSpotSyncRecord(Base):
+    __tablename__ = "hubspot_sync_records"
+
+    sync_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    lead_id = Column(String(36), ForeignKey("sales_leads.lead_id"), nullable=False, index=True)
+    local_contact_id = Column(String(36), nullable=True, index=True)
+    local_company_id = Column(String(36), nullable=True, index=True)
+    local_deal_id = Column(String(36), nullable=True, index=True)
+    hubspot_contact_id = Column(String, nullable=True, index=True)
+    hubspot_company_id = Column(String, nullable=True, index=True)
+    hubspot_deal_id = Column(String, nullable=True, index=True)
+    action = Column(String, nullable=False, default="draft", index=True)
+    sync_status = Column(String, nullable=False, default="draft", index=True)
+    duplicate_key = Column(String, nullable=True, index=True)
+    retry_count = Column(Integer, nullable=False, default=0, index=True)
+    retryable = Column(Integer, nullable=False, default=0, index=True)
+    error = Column(Text, nullable=True)
+    contact_payload = Column(JSON, nullable=False, default=dict)
+    company_payload = Column(JSON, nullable=False, default=dict)
+    deal_payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
 
 class MarketingCampaign(Base):
@@ -551,6 +663,74 @@ class MarketingAnalytics(Base):
     spend = Column(Integer, nullable=False, default=0)
     revenue = Column(Integer, nullable=False, default=0)
     captured_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MetaConnectorConfig(Base):
+    __tablename__ = "meta_connector_configs"
+
+    config_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, unique=True, index=True)
+    ad_account_id = Column(String, nullable=True, index=True)
+    instagram_account_id = Column(String, nullable=True, index=True)
+    page_id = Column(String, nullable=True, index=True)
+    status = Column(String, nullable=False, default="not_configured", index=True)
+    authentication_status = Column(String, nullable=False, default="missing_credentials", index=True)
+    scopes = Column(JSON, nullable=False, default=list)
+    configuration = Column(JSON, nullable=False, default=dict)
+    secret_reference = Column(String, nullable=True, index=True)
+    last_checked_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    last_sync_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MetaCampaignInsight(Base):
+    __tablename__ = "meta_campaign_insights"
+
+    insight_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    campaign_id = Column(String(36), ForeignKey("marketing_campaigns.campaign_id"), nullable=True, index=True)
+    external_campaign_id = Column(String, nullable=False, index=True)
+    campaign_name = Column(String, nullable=False, index=True)
+    source = Column(String, nullable=False, default="meta", index=True)
+    channel = Column(String, nullable=False, default="Meta Ads", index=True)
+    spend = Column(Integer, nullable=False, default=0)
+    impressions = Column(Integer, nullable=False, default=0)
+    reach = Column(Integer, nullable=False, default=0)
+    clicks = Column(Integer, nullable=False, default=0)
+    ctr = Column(Integer, nullable=False, default=0)
+    cpc = Column(Integer, nullable=False, default=0)
+    leads = Column(Integer, nullable=False, default=0)
+    sync_status = Column(String, nullable=False, default="mock", index=True)
+    error = Column(Text, nullable=True)
+    raw_payload = Column(JSON, nullable=False, default=dict)
+    captured_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MetaAdApproval(Base):
+    __tablename__ = "meta_ad_approvals"
+
+    approval_id = Column(String(36), primary_key=True, index=True)
+    business_id = Column(String(36), ForeignKey("businesses.business_id"), nullable=False, index=True)
+    action = Column(String, nullable=False, index=True)
+    campaign_name = Column(String, nullable=False, index=True)
+    budget = Column(Integer, nullable=False, default=0)
+    audience = Column(JSON, nullable=False, default=dict)
+    creative = Column(JSON, nullable=False, default=dict)
+    expected_goal = Column(Text, nullable=False, default="")
+    status = Column(String, nullable=False, default="pending", index=True)
+    approval_required = Column(Integer, nullable=False, default=1, index=True)
+    external_write_blocked = Column(Integer, nullable=False, default=1, index=True)
+    external_write_attempted = Column(Integer, nullable=False, default=0, index=True)
+    requested_by = Column(String, nullable=False, default="Marketing Executive", index=True)
+    decided_by = Column(String, nullable=True, index=True)
+    decision_comment = Column(Text, nullable=True)
+    audit_event_id = Column(String(36), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
 
 class CustomerProfile(Base):
@@ -824,6 +1004,109 @@ class MCPServer(Base):
     supported_tools = Column(JSON, nullable=False, default=list)
     created_at = Column(DateTime(timezone=True), nullable=False, index=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPServerCapability(Base):
+    __tablename__ = "mcp_server_capabilities"
+
+    capability_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=False, default="")
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPServerHealth(Base):
+    __tablename__ = "mcp_server_health"
+
+    health_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    status = Column(String, nullable=False, index=True)
+    latency_ms = Column(Integer, nullable=True, index=True)
+    authentication_status = Column(String, nullable=False, index=True)
+    capabilities = Column(JSON, nullable=False, default=list)
+    connected_tools = Column(JSON, nullable=False, default=list)
+    failure_count = Column(Integer, nullable=False, default=0, index=True)
+    message = Column(Text, nullable=False, default="")
+    checked_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPTool(Base):
+    __tablename__ = "mcp_tools"
+
+    tool_id = Column(String(80), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=False, default="")
+    input_schema = Column(JSON, nullable=False, default=dict)
+    permissions = Column(JSON, nullable=False, default=list)
+    enabled = Column(Integer, nullable=False, default=1, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPConnection(Base):
+    __tablename__ = "mcp_connections"
+
+    connection_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    auth_type = Column(String, nullable=False, index=True)
+    authentication_status = Column(String, nullable=False, index=True)
+    credentials = Column(JSON, nullable=False, default=dict)
+    metadata_json = Column("metadata", JSON, nullable=False, default=dict)
+    connected_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    disconnected_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPPermission(Base):
+    __tablename__ = "mcp_permissions"
+
+    permission_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    permission = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=False, default="")
+    granted = Column(Integer, nullable=False, default=0, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPExecutionHistory(Base):
+    __tablename__ = "mcp_execution_history"
+
+    execution_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    tool = Column(String, nullable=False, index=True)
+    parameters = Column(JSON, nullable=False, default=dict)
+    status = Column(String, nullable=False, index=True)
+    latency_ms = Column(Integer, nullable=False, default=0, index=True)
+    output = Column(JSON, nullable=False, default=dict)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPEvent(Base):
+    __tablename__ = "mcp_events"
+
+    event_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class MCPLog(Base):
+    __tablename__ = "mcp_logs"
+
+    log_id = Column(String(36), primary_key=True, index=True)
+    server_id = Column(String(36), ForeignKey("mcp_servers.mcp_server_id"), nullable=False, index=True)
+    level = Column(String, nullable=False, default="info", index=True)
+    message = Column(Text, nullable=False)
+    context = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
 
 class CapabilityRoute(Base):

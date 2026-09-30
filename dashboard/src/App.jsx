@@ -6,9 +6,11 @@ const endpoints = {
   health: "/api/",
   diagnostics: "/api/system/database/status",
   ollama: "/api/system/ollama/status",
+  aiProviders: "/api/ai/providers/status",
   voiceValidation: "/api/conversations/voice-validation",
   systemHealth: "/api/commercial/system/health",
   connectors: "/api/commercial/connectors/status",
+  dp360Command: "/api/commercial/dp360-command-center",
   founder: "/api/commercial/founder-dashboard",
   journey: "/api/commercial/demo/journey",
   businesses: "/api/businesses",
@@ -30,11 +32,16 @@ const endpoints = {
   salesPipeline: "/api/sales/pipeline",
   salesDemos: "/api/sales/demos",
   salesDashboard: "/api/sales/dashboard",
+  hubspotStatus: "/api/hubspot/status",
+  hubspotSyncHistory: "/api/hubspot/sync/history",
   marketingSummary: "/api/marketing/summary",
   marketingCampaigns: "/api/marketing/campaigns",
   marketingAnalytics: "/api/marketing/analytics",
   marketingContent: "/api/marketing/content",
   marketingDashboard: "/api/marketing/dashboard",
+  metaStatus: "/api/marketing/meta/status",
+  metaInsights: "/api/marketing/meta/insights",
+  metaApprovals: "/api/marketing/meta/approvals",
   businessIntelligence: "/api/copilot/business-intelligence",
   customerWorkspace: "/api/copilot/customer-workspace",
   executiveBriefs: "/api/copilot/executive-briefs",
@@ -80,20 +87,23 @@ const endpoints = {
   jiraStatus: "/api/jira/status",
   jiraProjects: "/api/jira/projects",
   jiraIssues: "/api/jira/issues",
+  mcpDashboard: "/api/mcp/dashboard",
 };
 
 const modelManagerEndpoints = {
-  start: "/api/system/ollama/start",
-  stop: "/api/system/ollama/stop",
-  switch: "/api/system/ollama/switch",
+  start: "/api/ai/providers/enable",
+  stop: "/api/ai/providers/disable",
+  switch: "/api/ai/providers/models",
+  test: "/api/ai/providers/test",
 };
 
-const businessScoped = new Set(["founder", "journey", "ceo", "cto", "pm", "objectives", "collaborations", "tasks", "projects", "knowledge", "events", "executions", "businessIntelligence", "customerWorkspace", "executiveBriefs", "businessHealth", "presentation", "chiefConversations", "conversations", "founderGoals", "executiveCommand", "planningGoals", "executionPlans", "planApprovals", "runtimeDashboard", "runtimeExecutions", "runtimeQueue", "runtimeNotifications", "runtimeDepartments", "softwareFactoryDeliveries", "softwareFactoryDashboard", "softwareFactoryValidation"]);
+const businessScoped = new Set(["founder", "journey", "ceo", "cto", "pm", "objectives", "collaborations", "tasks", "projects", "knowledge", "events", "executions", "hubspotStatus", "hubspotSyncHistory", "marketingDashboard", "metaStatus", "metaInsights", "metaApprovals", "businessIntelligence", "customerWorkspace", "executiveBriefs", "businessHealth", "presentation", "chiefConversations", "conversations", "founderGoals", "executiveCommand", "planningGoals", "executionPlans", "planApprovals", "runtimeDashboard", "runtimeExecutions", "runtimeQueue", "runtimeNotifications", "runtimeDepartments", "softwareFactoryDeliveries", "softwareFactoryDashboard", "softwareFactoryValidation"]);
 
 const initialData = {
   health: null,
   diagnostics: null,
   ollama: null,
+  aiProviders: null,
   voiceValidation: null,
   systemHealth: null,
   connectors: [],
@@ -118,11 +128,17 @@ const initialData = {
   salesPipeline: null,
   salesDemos: null,
   salesDashboard: null,
+  hubspotStatus: null,
+  hubspotSyncHistory: [],
   marketingSummary: null,
   marketingCampaigns: [],
   marketingAnalytics: [],
   marketingContent: [],
   marketingDashboard: null,
+  metaStatus: null,
+  metaInsights: [],
+  metaApprovals: [],
+  dp360Command: null,
   businessIntelligence: null,
   customerWorkspace: null,
   executiveBriefs: null,
@@ -168,6 +184,7 @@ const initialData = {
   jiraStatus: null,
   jiraProjects: [],
   jiraIssues: [],
+  mcpDashboard: null,
 };
 
 const icons = {
@@ -392,6 +409,7 @@ function MissionLanding({ user, data, activeBusiness, onBrief, onOpenConversatio
 
 const navItems = [
   ["Executive Dashboard", "home"],
+  ["DP360 Command", "command"],
   ["Ask Pardha", "chat"],
   ["Businesses", "business"],
   ["Agents", "agents"],
@@ -409,24 +427,24 @@ const navItems = [
 function WorkspaceShell({ user, activePage, setActivePage, activeBusinessId, businesses, onSwitchBusiness, onRefresh, onLogout, onLoadDemo, working, notice, failures, lastUpdated, children, voiceState, onVoiceStart, onVoiceStop, continuousVoice, onToggleContinuousVoice, voiceError, interimTranscript, ollama, voiceValidation, onModelStart, onModelStop, onModelSwitch, pageOwnsVoice = false }) {
   return (
     <div className="min-h-screen bg-[#070b12] text-slate-100">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[18.75rem] border-r border-slate-800/90 bg-[#0b111b] px-3 py-6 lg:block">
-        <div className="mb-10 flex items-center gap-4 px-2">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[18.75rem] flex-col border-r border-slate-800/90 bg-[#0b111b] px-3 py-6 lg:flex">
+        <div className="mb-8 flex shrink-0 items-center gap-4 px-2">
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-violet-500 text-cyan-300 shadow-[0_0_34px_rgba(139,92,246,0.45)]"><Icon name="command" className="h-6 w-6" /></span>
           <div>
             <p className="font-display text-xl font-bold tracking-wide text-white">PARDHA</p>
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-500">Agentic OS</p>
           </div>
         </div>
-        <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Workspace</p>
-        <nav className="space-y-2">
+        <p className="mb-3 shrink-0 px-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Workspace</p>
+        <nav className="pardha-sidebar-scroll min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
           {navItems.map(([name, icon]) => (
             <button key={name} onClick={() => setActivePage(name)} className={`group flex min-h-12 w-full items-center gap-4 rounded-2xl px-3 text-left text-sm font-bold transition ${activePage === name ? "border border-violet-400/30 bg-violet-500/20 text-white" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}>
-              <span className={`grid h-9 w-9 place-items-center rounded-xl ${activePage === name ? "bg-violet-500/35 text-white" : "bg-slate-900 text-slate-500 group-hover:text-cyan-300"}`}><Icon name={icon} /></span>
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${activePage === name ? "bg-violet-500/35 text-white" : "bg-slate-900 text-slate-500 group-hover:text-cyan-300"}`}><Icon name={icon} /></span>
               <span>{name}</span>
             </button>
           ))}
         </nav>
-        <div className="absolute inset-x-3 bottom-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-300">
+        <div className="mt-5 shrink-0 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-300">
           <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />System live
         </div>
       </aside>
@@ -584,6 +602,92 @@ function VoiceCore({ state }) {
   );
 }
 
+function DP360CommandPage({ command, onAsk, onLoadDemo, working }) {
+  const workspace = command?.workspace || {};
+  const departments = command?.departments || {};
+  const execution = command?.execution || {};
+  const counts = execution.counts || {};
+  const connectors = command?.connectors || [];
+  const activeProvider = command?.reasoning?.active_provider || "deterministic";
+  const sales = departments.sales || {};
+  const marketing = departments.marketing || {};
+  const demos = execution.demo_booking?.upcoming_demos || [];
+  return (
+    <section className="space-y-6">
+      <DarkPanel title="DP360 Command Center" subtitle={`${workspace.sprint || "SPRINT-001"} / ${workspace.mvp_principle || "Cloud-assisted, tool-driven agent OS."}`}>
+        <div className="grid gap-5 xl:grid-cols-[1fr_0.7fr]">
+          <div>
+            <span className="inline-flex rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-cyan-300">{workspace.status || "loading"}</span>
+            <h2 className="mt-6 font-display text-5xl font-semibold text-white">{workspace.business_name || "DP360"} founder command center</h2>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-400">Operate DP360 Commerce across CEO strategy, CPO/PM execution, CTO delivery, marketing cockpit, sales pipeline, demo booking, and connector diagnostics without requiring Ollama.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button onClick={() => onAsk("What can DP360 Command Center do today?")} className="min-h-11 rounded-2xl bg-violet-500 px-5 text-sm font-bold text-white">Ask Pardha</button>
+              <button onClick={onLoadDemo} disabled={working} className="min-h-11 rounded-2xl border border-slate-800 bg-slate-900 px-5 text-sm font-bold text-slate-200 disabled:opacity-50">Reload DP360 demo</button>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <WorkItem title="Reasoning" detail={`${label(activeProvider)} active / Ollama required: ${command?.controls?.ollama_required ? "yes" : "no"}`} accent="green" />
+            <WorkItem title="Connector Mode" detail={label(command?.controls?.connector_mode || "mock")} accent="cyan" />
+            <WorkItem title="External Writes" detail={label(command?.controls?.destructive_external_writes || "approval required")} accent="amber" />
+            <WorkItem title="Tests" detail={command?.testing?.smoke || "Waiting for backend smoke test"} accent="violet" />
+          </div>
+        </div>
+      </DarkPanel>
+
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <Metric title="Knowledge" value={counts.knowledge ?? 0} detail="DP360 context records" />
+        <Metric title="Objectives" value={counts.objectives ?? 0} detail="active execution goals" />
+        <Metric title="Tasks" value={counts.tasks ?? 0} detail="tracked work items" />
+        <Metric title="Demos" value={sales.summary?.upcoming_demos ?? 0} detail="requested or scheduled" />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        {["ceo", "pm", "cto"].map((role) => {
+          const brief = departments[role] || {};
+          const items = brief.recommendations || brief.top_priorities || brief.recommended_actions || [];
+          return (
+            <DarkPanel key={role} title={role.toUpperCase()} subtitle={brief.summary || "Brief is generated from current DP360 context."}>
+              <DarkList items={items.slice(0, 5)} empty="No recommendations returned." render={(item, index) => <WorkItem key={index} title={typeof item === "string" ? item : item.title || label(item)} accent={role === "ceo" ? "violet" : role === "pm" ? "cyan" : "green"} />} />
+            </DarkPanel>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <DarkPanel title="Sales And Demo Booking" subtitle="HubSpot-ready pipeline plus local demo scheduling.">
+          <div className="grid gap-3">
+            <WorkItem title="Prospects" detail={`${sales.summary?.leads ?? 0} leads / ${sales.summary?.warm_leads ?? 0} warm`} accent="green" />
+            <WorkItem title="Pipeline Value" detail={`$${sales.summary?.pipeline_value ?? 0}`} accent="violet" />
+            <DarkList items={demos.slice(0, 4)} empty="No demos requested or scheduled yet." render={(item, index) => <WorkItem key={index} title={item.company || "Demo"} detail={item.scheduled_at || item.status || "pending"} accent="cyan" />} />
+          </div>
+        </DarkPanel>
+        <DarkPanel title="Marketing Cockpit" subtitle="Meta and Instagram read-first campaign visibility.">
+          <div className="grid gap-3">
+            <WorkItem title="Campaigns" detail={`${marketing.summary?.active_campaigns ?? marketing.active_campaigns?.length ?? 0} active campaigns`} accent="cyan" />
+            <WorkItem title="Leads" detail={`${marketing.summary?.leads ?? 0} marketing-sourced leads`} accent="green" />
+            <WorkItem title="Budget Usage" detail={`$${marketing.summary?.spend ?? 0}`} accent="amber" />
+            <DarkList items={(marketing.recommendations || marketing.summary?.recommendations || []).slice(0, 4)} empty="No marketing recommendations returned." render={(item, index) => <WorkItem key={index} title={item} accent="violet" />} />
+          </div>
+        </DarkPanel>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <DarkPanel title="Execution" subtitle="Objectives and tasks generated for the DP360 workspace.">
+          <div className="grid gap-3 md:grid-cols-2">
+            <DarkList items={(execution.objectives || []).slice(0, 5)} empty="No objectives loaded." render={(item) => <WorkItem key={item.objective_id} title={item.title} detail={label(item.status)} accent="cyan" />} />
+            <DarkList items={(execution.tasks || []).slice(0, 5)} empty="No tasks loaded." render={(item) => <WorkItem key={item.task_id} title={item.title} detail={`${label(item.status)} / ${item.assigned_agent || "agent"}`} accent="green" />} />
+          </div>
+        </DarkPanel>
+        <DarkPanel title="Connector Readiness" subtitle="Live authentication is never faked; mock contracts are explicit.">
+          <div className="grid gap-3">
+            <DarkList items={connectors} empty="No commercial connectors returned." render={(item) => <WorkItem key={item.provider} title={item.name} detail={`${label(item.health)} / ${label(item.authentication_status)} / missing: ${(item.missing_environment || []).join(", ") || "none"}`} accent={item.connected ? "green" : item.health === "mock" ? "amber" : "red"} />} />
+          </div>
+        </DarkPanel>
+      </div>
+    </section>
+  );
+}
+
 function ExecutiveDashboardPage({ user, data, activeBusiness, onAsk, onVoice, onApprove, onReject, working, voiceState }) {
   const name = (user.full_name || "Founder").split(" ")[0];
   const brief = data.founder?.ceo_summary || data.executiveCommand?.summary || data.ceo?.summary;
@@ -711,10 +815,62 @@ function AgentsPage({ data }) {
   );
 }
 
-function IntegrationsPage({ connectors, enterpriseIntegrations, jiraStatus, onTest }) {
+function IntegrationsPage({ connectors, enterpriseIntegrations, jiraStatus, mcpDashboard, onTest }) {
   const providers = ["GitHub", "Jira", "Gmail", "Calendar", "WhatsApp", "Meta", "Instagram", "LinkedIn", "VS Code", "Filesystem", "PostgreSQL", "MCP Runtime"];
+  const mcpServers = mcpDashboard?.servers || [];
+  const mcpHealth = mcpDashboard?.health || [];
+  const mcpTools = mcpDashboard?.tools || [];
+  const mcpLogs = mcpDashboard?.recent_logs || [];
   return (
     <section className="grid gap-6">
+      <DarkPanel title="MCP Runtime" subtitle="Reusable server registry, authentication, health, execution, tools, logs, and diagnostics.">
+        <div className="grid gap-4 xl:grid-cols-[1fr_0.8fr]">
+          <div className="grid gap-4 md:grid-cols-2">
+            {mcpServers.map((server) => {
+              const health = mcpHealth.find((item) => item.server_id === server.server_id);
+              const tools = mcpTools.filter((tool) => tool.server_id === server.server_id);
+              const connected = health?.status === "healthy" || server.status === "connected";
+              return (
+                <article key={server.server_id} className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 p-5">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-bold text-white">{server.name}</p>
+                      <p className="text-xs leading-5 text-slate-500">{server.endpoint} / {server.transport}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase ${connected ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{health?.status || server.health}</span>
+                  </div>
+                  <div className="grid gap-3">
+                    <WorkItem title="Connection" detail={label(server.status)} accent={connected ? "green" : "amber"} />
+                    <WorkItem title="Authentication" detail={label(health?.authentication_status || server.authentication_status)} accent={(health?.authentication_status || server.authentication_status) === "configured" ? "green" : "red"} />
+                    <WorkItem title="Latency" detail={health?.latency_ms != null ? `${health.latency_ms}ms` : "No latency sample"} accent="cyan" />
+                    <WorkItem title="Capabilities" detail={(server.capabilities || []).join(", ") || "No capabilities discovered"} accent="violet" />
+                    <WorkItem title="Tools" detail={tools.map((tool) => tool.name).join(", ") || "No tools discovered"} accent="green" />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button className="min-h-10 rounded-2xl border border-slate-800 bg-slate-900 px-4 text-sm font-bold text-slate-200">Open Module</button>
+                    <button className="min-h-10 rounded-2xl border border-slate-800 bg-slate-900 px-4 text-sm font-bold text-slate-200">Reconnect</button>
+                    <button className="min-h-10 rounded-2xl border border-slate-800 bg-slate-900 px-4 text-sm font-bold text-slate-200">Disconnect</button>
+                  </div>
+                </article>
+              );
+            })}
+            {!mcpServers.length && <DarkEmpty>No MCP servers have registered yet.</DarkEmpty>}
+          </div>
+          <div className="grid gap-4">
+            <DarkPanel title="Diagnostics" subtitle="Runtime-level events and failures." className="bg-slate-950/40">
+              <div className="grid gap-3">
+                <WorkItem title="Server Running" detail={mcpServers.length ? `${mcpServers.length} registered server${mcpServers.length === 1 ? "" : "s"}` : "No server"} accent={mcpServers.length ? "green" : "red"} />
+                <WorkItem title="Available Tools" detail={`${mcpTools.length} tool${mcpTools.length === 1 ? "" : "s"}`} accent="violet" />
+                <WorkItem title="Connected APIs" detail={mcpHealth.filter((item) => item.status === "healthy").map((item) => item.server_id).join(", ") || "None connected"} accent="cyan" />
+                <WorkItem title="Failures" detail={`${mcpHealth.reduce((sum, item) => sum + (item.failure_count || 0), 0)} failed execution${mcpHealth.reduce((sum, item) => sum + (item.failure_count || 0), 0) === 1 ? "" : "s"}`} accent="amber" />
+              </div>
+            </DarkPanel>
+            <DarkPanel title="Logs" subtitle="Recent MCP runtime logs." className="bg-slate-950/40">
+              <DarkList items={mcpLogs.slice(0, 6)} empty="No MCP logs yet." render={(item) => <WorkItem key={item.log_id} title={item.message} detail={`${item.server_id} / ${relativeTime(item.created_at)}`} accent={item.level === "error" ? "red" : "green"} />} />
+            </DarkPanel>
+          </div>
+        </div>
+      </DarkPanel>
       <DarkPanel title="Integrations" subtitle="Health, authentication, capabilities, latency, and logs for every operating connector.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {providers.map((provider) => {
@@ -784,9 +940,57 @@ function FounderPage({ data, onAsk }) {
   );
 }
 
-function SettingsPage({ data, diagnostics, failures }) {
+function SettingsPage({ data, diagnostics, failures, onModelStart, onModelStop, onModelSwitch, onModelTest, working }) {
+  const providerStatus = data.aiProviders || {};
+  const providers = providerStatus.providers || [];
+  const dailyBudget = providerStatus.daily_budget || {};
+  const recentFailure = dailyBudget.recent_failures?.[dailyBudget.recent_failures.length - 1];
+  const ollamaProvider = providers.find((provider) => provider.provider === "ollama") || {};
+  const modelOptions = ["qwen3:8b", "llama3.2:3b", ...(ollamaProvider.available_models || data.ollama?.available_models || [])].filter((item, index, all) => item && all.indexOf(item) === index);
+  const currentModel = ollamaProvider.current_model || data.ollama?.current_model || data.ollama?.model || "qwen3:8b";
   return (
-    <section className="grid gap-6 xl:grid-cols-3">
+    <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+      <DarkPanel title="AI Providers" subtitle="Conversation reasoning is gated by provider readiness.">
+        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-bold text-white">Ollama</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{ollamaProvider.message || data.ollama?.message || "Local reasoning provider."}</p>
+              </div>
+              <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${ollamaProvider.ready ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200" : "border-amber-400/25 bg-amber-400/10 text-amber-200"}`}>{ollamaProvider.ready ? "Connected" : "Disconnected"}</span>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <StateCard title="Current Model" ok={Boolean(currentModel)} value={currentModel} detail={`Default ${ollamaProvider.default_model || data.ollama?.model || "qwen3:8b"}`} />
+              <StateCard title="Latency" ok={ollamaProvider.latency_ms != null} value={ollamaProvider.latency_ms != null ? `${ollamaProvider.latency_ms}ms` : "n/a"} detail={`Last check ${relativeTime(ollamaProvider.last_health_check)}`} />
+              <StateCard title="Context" ok={Boolean(ollamaProvider.context_length)} value={ollamaProvider.context_length || data.ollama?.context_size || "n/a"} detail="Context length" />
+              <StateCard title="Tokens" ok={ollamaProvider.tokens != null} value={ollamaProvider.tokens ?? data.ollama?.tokens ?? "n/a"} detail={ollamaProvider.model_size || "Model size unavailable"} />
+              <StateCard title="Memory" ok={ollamaProvider.memory_usage === "Local daemon"} value={ollamaProvider.memory_usage || "Unknown"} detail="Local Ollama process state" />
+              <StateCard title="Execution Mode" ok={Boolean(providerStatus.execution_mode)} value={providerStatus.execution_mode || "Unknown"} detail={`Retry limit ${providerStatus.timeout_seconds?.retry_limit ?? 1}`} />
+              <StateCard title="Daily Cap" ok={!dailyBudget.budget_exceeded} value={`${dailyBudget.requests_used ?? 0}/${dailyBudget.requests_limit ?? 0}`} detail={`${dailyBudget.requests_remaining ?? 0} requests remaining`} />
+              <StateCard title="Fallbacks" ok={(dailyBudget.fallback_count || 0) === 0} value={dailyBudget.fallback_count ?? 0} detail={recentFailure ? `${label(recentFailure.provider)}: ${short(recentFailure.reason, 42)}` : "No provider failures today"} />
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <select value={currentModel} onChange={(event) => onModelSwitch(event.target.value)} className="min-h-11 rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm font-bold text-slate-200">
+                {modelOptions.map((model) => <option key={model} value={model}>{model}</option>)}
+              </select>
+              <ShellButton disabled={working} onClick={() => onModelStart(currentModel)}>Enable</ShellButton>
+              <ShellButton disabled={working} onClick={() => onModelStop(currentModel)}>Disable</ShellButton>
+              <ShellButton disabled={working} onClick={() => onModelStart(currentModel)}>Start Ollama</ShellButton>
+              <ShellButton disabled={working} onClick={() => onModelStop(currentModel)}>Stop Ollama</ShellButton>
+              <ShellButton disabled={working} dark onClick={() => onModelTest(currentModel)}>Test Connection</ShellButton>
+              <ShellButton disabled={working} onClick={() => onModelTest(currentModel, "Summarize Pardha provider readiness in one sentence.")}>Run Sample Prompt</ShellButton>
+            </div>
+          </div>
+          <div className="grid gap-3">
+            {providers.filter((provider) => provider.provider !== "ollama").map((provider) => (
+              <WorkItem key={provider.provider} title={provider.display_name} detail={provider.message || "Disabled until configured."} accent="amber" />
+            ))}
+            {!providers.filter((provider) => provider.provider !== "ollama").length && ["OpenAI", "Claude", "Gemini"].map((provider) => <WorkItem key={provider} title={provider} detail="Disabled until configured." accent="amber" />)}
+          </div>
+        </div>
+      </DarkPanel>
+      <div className="grid gap-6">
       <DarkPanel title="Settings" subtitle="Administration is last in the IA.">
         <WorkItem title="Database" detail={diagnostics?.database_name || "Unknown database"} accent={diagnostics?.connected ? "green" : "red"} />
         <div className="mt-3"><WorkItem title="Scheduler" detail={diagnostics?.scheduler_status || "unknown"} accent="cyan" /></div>
@@ -800,6 +1004,7 @@ function SettingsPage({ data, diagnostics, failures }) {
       <DarkPanel title="Migration Plan" subtitle="How the redesign maps old modules into Founder workflows.">
         {["Executive Dashboard replaces module-count homepage.", "Ask Pardha becomes the primary creation and command surface.", "Business context sits before administration.", "Agents, Marketing, Sales, Product Factory, Operations, Integrations, Analytics, Founder, and Settings are dedicated responsibilities."].map((item) => <WorkItem key={item} title={item} accent="green" />)}
       </DarkPanel>
+      </div>
     </section>
   );
 }
@@ -1086,13 +1291,16 @@ function App() {
 
   const scheduleSalesDemo = useCallback(async (leadId) => {
     setWorking(true);
-    const response = await fetch(`/api/sales/leads/${leadId}/schedule-demo`, {
+    const availabilityResponse = await fetch("/api/sales/calendar/availability?days=1");
+    const availability = await availabilityResponse.json();
+    const requestedSlot = availability?.slots?.[0]?.start;
+    const response = await fetch(`/api/sales/leads/${leadId}/demo-booking`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ owner: "Founder", meeting_url: "https://meet.pardha.local/dp360-demo" }),
+      body: JSON.stringify({ requested_slot: requestedSlot, owner: "Founder", meeting_url: "https://meet.pardha.local/dp360-demo" }),
     });
     const result = await response.json();
-    setNotice(response.ok ? `${result.company} demo scheduled. Calendar invite generated.` : result.detail || "Unable to schedule demo.");
+    setNotice(response.ok ? `${result.company} demo ${label(result.status)} through Calendar mock.` : result.detail || "Unable to create demo booking. Qualify the lead first.");
     await refresh();
     setWorking(false);
   }, [refresh]);
@@ -1106,6 +1314,40 @@ function App() {
     });
     const result = await response.json();
     setNotice(response.ok ? `${result.company} moved to ${label(result.status)}.` : result.detail || "Unable to update sales stage.");
+    await refresh();
+    setWorking(false);
+  }, [refresh]);
+
+  const qualifySalesLead = useCallback(async (lead) => {
+    setWorking(true);
+    const response = await fetch(`/api/sales/leads/${lead.lead_id}/qualify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_type: lead.industry || "eCommerce",
+        location: "US",
+        stage: lead.pipeline_stage === "prospecting" ? "growth" : lead.pipeline_stage,
+        budget: lead.sales_priority === "high" ? 50000 : 15000,
+        timeline: lead.sales_priority === "high" ? "this month" : "this quarter",
+        requirement: lead.next_action || "Improve retention, customer visibility, and DP360 sales execution",
+        source: "Founder dashboard",
+      }),
+    });
+    const result = await response.json();
+    setNotice(response.ok ? `${lead.company} qualification: ${label(result.qualification_status)} / score ${result.score}.` : result.detail || "Unable to qualify lead.");
+    await refresh();
+    setWorking(false);
+  }, [refresh]);
+
+  const syncLeadToHubSpot = useCallback(async (leadId) => {
+    setWorking(true);
+    const response = await fetch("/api/hubspot/sync/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id: leadId, allow_write: false }),
+    });
+    const result = await response.json();
+    setNotice(response.ok ? `HubSpot ${label(result.sync_status)}: ${result.message}` : result.detail || "Unable to sync HubSpot lead.");
     await refresh();
     setWorking(false);
   }, [refresh]);
@@ -1129,6 +1371,52 @@ function App() {
     setActiveTab("Marketing");
     setWorking(false);
   }, [marketingRequest, refresh]);
+
+  const ingestMetaInsights = useCallback(async () => {
+    setWorking(true);
+    const scopedId = activeBusinessId || data.currentContext?.active_business?.business_id || "";
+    const response = await fetch(`/api/marketing/meta/ingest${scopedId ? `?business_id=${encodeURIComponent(scopedId)}` : ""}`, { method: "POST" });
+    const result = await response.json();
+    setNotice(response.ok ? `Meta ingestion ${label(result.sync_status)}: ${result.rows_ingested} insight rows.` : result.detail || "Unable to ingest Meta insights.");
+    await refresh();
+    setWorking(false);
+  }, [activeBusinessId, data.currentContext?.active_business?.business_id, refresh]);
+
+  const requestMetaAdApproval = useCallback(async () => {
+    setWorking(true);
+    const scopedId = activeBusinessId || data.currentContext?.active_business?.business_id || "";
+    const response = await fetch("/api/marketing/meta/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_id: scopedId || null,
+        action: "campaign.create",
+        campaign_name: "DP360 Cloud Kitchen Pilot Ads",
+        budget: 1500,
+        audience: { segment: "cloud kitchen founders", country: "India", priority: "qualified operators" },
+        creative: { headline: "Run your kitchen from one command center", format: "founder demo invite" },
+        expected_goal: "Book 10 qualified DP360 demos",
+        requested_by: user?.full_name || "Marketing Executive",
+      }),
+    });
+    const result = await response.json();
+    setNotice(response.ok ? "Meta ad action is waiting for founder approval." : result.detail || "Unable to request Meta approval.");
+    await refresh();
+    setWorking(false);
+  }, [activeBusinessId, data.currentContext?.active_business?.business_id, refresh, user]);
+
+  const decideMetaAdApproval = useCallback(async (approvalId, decision) => {
+    setWorking(true);
+    const response = await fetch(`/api/marketing/meta/approvals/${approvalId}/${decision}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decided_by: user?.full_name || "Founder", comment: `${label(decision)} from Marketing approval gate.` }),
+    });
+    const result = await response.json();
+    setNotice(response.ok ? `Meta approval ${decision}.` : result.detail || "Unable to update Meta approval.");
+    await refresh();
+    setWorking(false);
+  }, [refresh, user]);
 
   const onboardCustomer = useCallback(async () => {
     setWorking(true);
@@ -1347,6 +1635,14 @@ function App() {
       setVoiceState("error");
       return;
     }
+    if (!data.aiProviders?.ready) {
+      const message = "My reasoning engine is offline. Enable Ollama from Settings.";
+      setVoiceError(message);
+      setInterimTranscript(message);
+      setVoiceState("error");
+      setNotice(message);
+      return;
+    }
     window.speechSynthesis?.cancel?.();
     recognitionRef.current?.abort?.();
     voiceTranscriptRef.current = "";
@@ -1409,7 +1705,7 @@ function App() {
       setInterimTranscript("");
       setVoiceState("error");
     }
-  }, [activeBusiness, activeTab, submitVoiceTranscript]);
+  }, [activeBusiness, activeTab, data.aiProviders?.ready, submitVoiceTranscript]);
 
   useEffect(() => {
     startVoiceRef.current = startVoice;
@@ -1545,15 +1841,15 @@ function App() {
     setWorking(false);
   }, [refresh, user]);
 
-  const controlModel = useCallback(async (action, model) => {
+  const controlModel = useCallback(async (action, model, prompt) => {
     setWorking(true);
     const response = await fetch(modelManagerEndpoints[action], {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model }),
+      body: JSON.stringify({ provider: "ollama", model, prompt }),
     });
     const result = await response.json();
-    setNotice(response.ok ? `${label(result.model)} ${result.status}: ${result.message}` : result.detail || "Unable to update model runtime.");
+    setNotice(response.ok ? `${label(result.model)} ${result.status}: ${result.sample || result.message}` : result.detail || "Unable to update model runtime.");
     await refresh();
     setWorking(false);
   }, [refresh]);
@@ -1571,18 +1867,19 @@ function App() {
 
   const pages = {
     "Executive Dashboard": <ExecutiveDashboardPage user={user} data={data} activeBusiness={activeBusiness} onAsk={openAsk} onVoice={startVoice} onApprove={approvePlan} onReject={rejectPlan} working={working} voiceState={voiceState} />,
+    "DP360 Command": <DP360CommandPage command={data.dp360Command} onAsk={openAsk} onLoadDemo={loadDP360Demo} working={working} />,
     "Ask Pardha": <AskPardhaTab data={data} activeBusiness={activeBusiness} activeConversationId={conversationId} messages={chatMessages} conversations={data.conversations} timeline={conversationTimeline} input={chatInput} setInput={setChatInput} onSend={sendConversationMessage} working={working} voiceState={voiceState} interimTranscript={interimTranscript} streamingEvents={streamingEvents} onVoiceStart={startVoice} onVoiceStop={stopVoice} onOpenConversation={openConversation} onPatchConversation={patchConversation} onDeleteConversation={deleteConversationAction} onExportConversation={exportConversationAction} />,
     Businesses: <BusinessesPage data={data} activeBusiness={activeBusiness} businessName={businessName} setBusinessName={setBusinessName} createBusiness={createBusiness} switchBusiness={switchBusiness} working={working} />,
     Agents: <AgentsPage data={data} />,
     Knowledge: <KnowledgeTab knowledge={data.knowledge} imports={data.knowledgeImports} onSubmit={addKnowledge} title={knowledgeTitle} setTitle={setKnowledgeTitle} content={knowledgeContent} setContent={setKnowledgeContent} files={knowledgeFiles} setFiles={setKnowledgeFiles} onUpload={uploadKnowledgeFiles} onDelete={deleteKnowledgeItem} search={knowledgeSearch} setSearch={setKnowledgeSearch} selected={selectedKnowledge} setSelected={setSelectedKnowledge} working={working} />,
-    Marketing: <MarketingVoicePage dashboard={data.marketingDashboard} campaigns={data.marketingCampaigns} analytics={data.marketingAnalytics} content={data.marketingContent} summary={data.marketingSummary} request={marketingRequest} setRequest={setMarketingRequest} onLaunch={launchMarketingCampaign} working={working} activeBusiness={activeBusiness} voiceState={voiceState} onVoiceStart={startVoice} onVoiceStop={stopVoice} interimTranscript={interimTranscript} voiceError={voiceError} messages={chatMessages} streamingEvents={streamingEvents} approvals={data.planApprovals} ollama={data.ollama} validation={data.voiceValidation} />,
-    Sales: <SalesTab dashboard={data.salesDashboard} leads={data.salesLeads} pipeline={data.salesPipeline} demos={data.salesDemos} summary={data.salesSummary} request={salesRequest} setRequest={setSalesRequest} onGenerate={generateProspects} onViewOutreach={viewSalesOutreach} onScheduleDemo={scheduleSalesDemo} onMoveStage={moveSalesStage} working={working} />,
+    Marketing: <MarketingVoicePage dashboard={data.marketingDashboard} campaigns={data.marketingCampaigns} analytics={data.marketingAnalytics} content={data.marketingContent} summary={data.marketingSummary} metaStatus={data.metaStatus} metaInsights={data.metaInsights} metaApprovals={data.metaApprovals} request={marketingRequest} setRequest={setMarketingRequest} onLaunch={launchMarketingCampaign} onIngestMeta={ingestMetaInsights} onRequestMetaApproval={requestMetaAdApproval} onDecideMetaApproval={decideMetaAdApproval} working={working} activeBusiness={activeBusiness} voiceState={voiceState} onVoiceStart={startVoice} onVoiceStop={stopVoice} interimTranscript={interimTranscript} voiceError={voiceError} messages={chatMessages} streamingEvents={streamingEvents} approvals={data.planApprovals} ollama={data.ollama} validation={data.voiceValidation} />,
+    Sales: <SalesTab dashboard={data.salesDashboard} leads={data.salesLeads} pipeline={data.salesPipeline} demos={data.salesDemos} summary={data.salesSummary} hubspotStatus={data.hubspotStatus} hubspotSyncHistory={data.hubspotSyncHistory} request={salesRequest} setRequest={setSalesRequest} onGenerate={generateProspects} onViewOutreach={viewSalesOutreach} onQualifyLead={qualifySalesLead} onScheduleDemo={scheduleSalesDemo} onMoveStage={moveSalesStage} onHubSpotSync={syncLeadToHubSpot} working={working} />,
     "Product Factory": <SoftwareFactoryTab deliveries={data.softwareFactoryDeliveries} dashboard={data.softwareFactoryDashboard} validation={data.softwareFactoryValidation} requirement={factoryRequirement} setRequirement={setFactoryRequirement} onCreate={createFactoryDelivery} onDecide={decideFactoryApproval} working={working} />,
     Operations: <RuntimeTab dashboard={data.runtimeDashboard} plans={data.executionPlans} executions={data.runtimeExecutions} queue={data.runtimeQueue} notifications={data.runtimeNotifications} departments={data.runtimeDepartments} onStart={startRuntimeExecution} onProcess={processRuntimeQueue} onRollback={rollbackRuntimeExecution} working={working} />,
-    Integrations: <IntegrationsPage connectors={data.connectors} enterpriseIntegrations={data.enterpriseIntegrations} jiraStatus={data.jiraStatus} onTest={testConnector} />,
+    Integrations: <IntegrationsPage connectors={data.connectors} enterpriseIntegrations={data.enterpriseIntegrations} jiraStatus={data.jiraStatus} mcpDashboard={data.mcpDashboard} onTest={testConnector} />,
     Analytics: <AnalyticsPage data={data} />,
     Founder: <FounderPage data={data} onAsk={openAsk} />,
-    Settings: <SettingsPage data={data} diagnostics={data.diagnostics} failures={failures} />,
+    Settings: <SettingsPage data={data} diagnostics={data.diagnostics} failures={failures} working={working} onModelStart={(model) => controlModel("start", model)} onModelStop={(model) => controlModel("stop", model)} onModelSwitch={(model) => controlModel("switch", model)} onModelTest={(model, prompt) => controlModel("test", model, prompt)} />,
   };
 
   if (!authChecked) {
@@ -2326,7 +2623,7 @@ function PresentationTab({ presentation, demoLibrary, onLoadDemo, working }) {
   );
 }
 
-function SalesTab({ dashboard, leads, pipeline, demos, summary, request, setRequest, onGenerate, onViewOutreach, onScheduleDemo, onMoveStage, working }) {
+function SalesTab({ dashboard, leads, pipeline, demos, summary, hubspotStatus, hubspotSyncHistory, request, setRequest, onGenerate, onViewOutreach, onQualifyLead, onScheduleDemo, onMoveStage, onHubSpotSync, working }) {
   const shownLeads = dashboard?.leads || leads;
   const shownPipeline = dashboard?.pipeline || pipeline;
   const shownDemos = dashboard?.demos || demos || { upcoming_demos: [] };
@@ -2346,6 +2643,16 @@ function SalesTab({ dashboard, leads, pipeline, demos, summary, request, setRequ
         <Metric title="Demos" value={shownSummary?.upcoming_demos || 0} detail="requested or scheduled" />
         <Metric title="Forecast" value={`$${((shownSummary?.revenue_forecast || 0) / 1000).toFixed(0)}k`} detail="weighted forecast" />
       </div>
+      <Panel title="HubSpot CRM Sync" subtitle={hubspotStatus?.message || "HubSpot connector status is loading."}>
+        <div className="grid gap-4 md:grid-cols-3">
+          <WorkItem title="Authentication" detail={label(hubspotStatus?.authentication_status || "unknown")} accent={hubspotStatus?.environment_valid ? "green" : "amber"} />
+          <WorkItem title="Write Mode" detail={label(hubspotStatus?.write_mode || "disabled")} accent={hubspotStatus?.write_mode === "live" ? "green" : "amber"} />
+          <WorkItem title="Sync Records" detail={`${hubspotSyncHistory?.length || 0} lead payload${hubspotSyncHistory?.length === 1 ? "" : "s"}`} accent="cyan" />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <List items={(hubspotSyncHistory || []).slice(0, 4)} empty="No HubSpot sync drafts yet." render={(record) => <WorkItem key={record.sync_id} title={record.payload?.company?.name || record.lead_id} detail={`${label(record.sync_status)} / ${record.duplicate ? "duplicate" : "unique"} / retries ${record.retry_count}`} accent={record.sync_status === "failed" ? "red" : record.sync_status === "synced" ? "green" : "amber"} />} />
+        </div>
+      </Panel>
       <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <Panel title="Lead status" subtitle="Qualified prospects and personalized outreach.">
           <List items={shownLeads?.slice(0, 12)} empty="No sales leads yet. Generate prospects to populate CRM." render={(lead) => (
@@ -2354,14 +2661,17 @@ function SalesTab({ dashboard, leads, pipeline, demos, summary, request, setRequ
                 <div>
                   <p className="font-semibold">{lead.company}</p>
                   <p className="mt-1 text-xs text-ink/45">{lead.industry} / {lead.contact_name || "No contact"} / score {lead.ai_opportunity_score}</p>
+                  {lead.qualification_status ? <p className="mt-1 text-xs font-semibold text-ink/60">Qualification: {label(lead.qualification_status)} / {lead.qualification_score}</p> : null}
                 </div>
                 <span className="rounded-full bg-acid px-2.5 py-1 text-[0.65rem] font-bold uppercase">{label(lead.sales_priority)}</span>
               </div>
-              <p className="mt-3 text-sm leading-6 text-ink/60">{short(lead.outreach_email || lead.next_action, 220)}</p>
+              <p className="mt-3 text-sm leading-6 text-ink/60">{short(lead.qualification_recommendation || lead.outreach_email || lead.next_action, 220)}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <ShellButton disabled={working} onClick={() => onViewOutreach(lead.lead_id)}>Outreach</ShellButton>
+                <ShellButton disabled={working} onClick={() => onQualifyLead(lead)}>Qualify</ShellButton>
                 <ShellButton disabled={working} onClick={() => onScheduleDemo(lead.lead_id)}>Schedule demo</ShellButton>
                 <ShellButton disabled={working} onClick={() => onMoveStage(lead.lead_id, "proposal_sent")}>Proposal</ShellButton>
+                <ShellButton disabled={working} onClick={() => onHubSpotSync(lead.lead_id)}>HubSpot Draft</ShellButton>
               </div>
             </article>
           )} />
@@ -2382,12 +2692,13 @@ function SalesTab({ dashboard, leads, pipeline, demos, summary, request, setRequ
   );
 }
 
-function MarketingVoicePage({ dashboard, campaigns, analytics, content, summary, request, setRequest, onLaunch, working, activeBusiness, voiceState, onVoiceStart, onVoiceStop, interimTranscript, voiceError, messages, streamingEvents, approvals, ollama, validation }) {
+function MarketingVoicePage({ dashboard, campaigns, analytics, content, summary, metaStatus, metaInsights, metaApprovals, request, setRequest, onLaunch, onIngestMeta, onRequestMetaApproval, onDecideMetaApproval, working, activeBusiness, voiceState, onVoiceStart, onVoiceStop, interimTranscript, voiceError, messages, streamingEvents, approvals, ollama, validation }) {
   const shownSummary = dashboard?.summary || summary || {};
   const shownCampaigns = dashboard?.active_campaigns || campaigns || [];
   const shownPerformance = dashboard?.performance || analytics || [];
   const shownContent = dashboard?.content_pipeline || content || [];
   const recommendations = dashboard?.recommendations || shownSummary?.recommendations || [];
+  const pendingMetaApprovals = (metaApprovals || []).filter((approval) => approval.status === "pending");
   const latestUser = [...(messages || [])].reverse().find((message) => message.role === "user");
   const latestAssistant = [...(messages || [])].reverse().find((message) => message.role !== "user");
   const active = !["idle", "completed"].includes(voiceState);
@@ -2436,6 +2747,7 @@ function MarketingVoicePage({ dashboard, campaigns, analytics, content, summary,
         </div>
         <div className="flex flex-wrap gap-3">
           <span className="inline-flex min-h-10 items-center rounded-full bg-emerald-400/15 px-4 text-sm font-bold uppercase text-emerald-300"><span className="mr-2 h-2.5 w-2.5 rounded-full bg-emerald-400" />Healthy</span>
+          <span className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-bold uppercase ${metaStatus?.authentication_status === "configured" ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-300"}`}>Meta {label(metaStatus?.authentication_status || "unknown")}</span>
           {shownCampaigns.length > 0 && <span className="inline-flex min-h-10 items-center rounded-full bg-slate-900 px-4 text-sm font-bold uppercase text-slate-200">{shownCampaigns.length} campaign{shownCampaigns.length === 1 ? "" : "s"}</span>}
           {shownSummary.leads !== undefined && <span className="inline-flex min-h-10 items-center rounded-full bg-slate-900 px-4 text-sm font-bold uppercase text-slate-200">{shownSummary.leads} lead{shownSummary.leads === 1 ? "" : "s"}</span>}
           <span className="inline-flex min-h-10 items-center rounded-full bg-violet-500/25 px-4 text-sm font-bold text-violet-100">{activeBusiness?.business_name || "No business selected"}</span>
@@ -2466,6 +2778,8 @@ function MarketingVoicePage({ dashboard, campaigns, analytics, content, summary,
                   <button onClick={onVoiceStart} disabled={active} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-cyan-400 px-5 text-sm font-bold text-slate-950 disabled:opacity-40"><Icon name="mic" /> Talk</button>
                   <button onClick={onVoiceStop} className="min-h-11 rounded-2xl border border-slate-800 bg-slate-900 px-5 text-sm font-bold text-slate-200">Interrupt</button>
                   <button onClick={onLaunch} disabled={working || !request.trim()} className="min-h-11 rounded-2xl bg-violet-500 px-5 text-sm font-bold text-white disabled:opacity-40">Execute Request</button>
+                  <button onClick={onIngestMeta} disabled={working} className="min-h-11 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-5 text-sm font-bold text-cyan-200 disabled:opacity-40">Ingest Meta Insights</button>
+                  <button onClick={onRequestMetaApproval} disabled={working} className="min-h-11 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-5 text-sm font-bold text-amber-200 disabled:opacity-40">Request Meta Approval</button>
                 </div>
               </div>
             </div>
@@ -2519,6 +2833,49 @@ function MarketingVoicePage({ dashboard, campaigns, analytics, content, summary,
                 <article key={`${row.campaign_id}-${row.channel}`} className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4">
                   <p className="text-sm font-bold text-white">{row.channel}</p>
                   <p className="mt-2 text-xs leading-5 text-slate-500">{row.impressions} impressions / {row.ctr}% CTR / {row.leads} leads / ROAS {row.roas}x</p>
+                </article>
+              )} />
+            </div>
+          </DarkPanel>
+          <DarkPanel title="Meta / Instagram Ingestion" subtitle={metaStatus?.message || "Meta connector status is loading."}>
+            <div className="grid gap-4 md:grid-cols-3">
+              <WorkItem title="Authentication" detail={label(metaStatus?.authentication_status || "unknown")} accent={metaStatus?.environment_valid ? "green" : "amber"} />
+              <WorkItem title="Last Sync" detail={metaStatus?.last_sync_at ? relativeTime(metaStatus.last_sync_at) : "Not synced"} accent={metaInsights?.length ? "green" : "amber"} />
+              <WorkItem title="Insight Rows" detail={`${metaInsights?.length || 0} normalized rows`} accent="cyan" />
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <DarkList items={(metaInsights || []).slice(0, 6)} empty="No Meta or Instagram insight rows ingested yet." render={(row) => (
+                <article key={row.insight_id} className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4">
+                  <p className="text-sm font-bold text-white">{row.campaign_name}</p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">{row.channel} / ${row.spend} spend / {row.reach} reach / {row.clicks} clicks / {row.leads} leads</p>
+                  <p className="mt-1 text-xs font-bold uppercase text-cyan-300">{label(row.sync_status)}</p>
+                </article>
+              )} />
+            </div>
+          </DarkPanel>
+          <DarkPanel title="Meta Approval Gate" subtitle="Meta write actions stay blocked until the founder explicitly approves them.">
+            <div className="grid gap-4 md:grid-cols-3">
+              <WorkItem title="Pending" detail={`${pendingMetaApprovals.length} action${pendingMetaApprovals.length === 1 ? "" : "s"}`} accent={pendingMetaApprovals.length ? "amber" : "green"} />
+              <WorkItem title="Policy" detail="Approval required" accent="cyan" />
+              <WorkItem title="External Writes" detail="Blocked by default" accent="amber" />
+            </div>
+            <div className="mt-4 grid gap-3">
+              <DarkList items={(metaApprovals || []).slice(0, 5)} empty="No Meta write approvals requested yet." render={(approval) => (
+                <article key={approval.approval_id} className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white">{approval.campaign_name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{approval.action} / ${approval.budget} / {label(approval.status)}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">{approval.expected_goal}</p>
+                      <p className="mt-1 text-xs text-slate-500">Audience: {label(approval.audience?.segment || "not specified")} / Creative: {approval.creative?.headline || "not specified"}</p>
+                    </div>
+                    {approval.status === "pending" && (
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <button onClick={() => onDecideMetaApproval(approval.approval_id, "approve")} disabled={working} className="min-h-10 rounded-xl bg-emerald-400 px-4 text-xs font-bold text-slate-950 disabled:opacity-40">Approve</button>
+                        <button onClick={() => onDecideMetaApproval(approval.approval_id, "reject")} disabled={working} className="min-h-10 rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 text-xs font-bold text-rose-200 disabled:opacity-40">Reject</button>
+                      </div>
+                    )}
+                  </div>
                 </article>
               )} />
             </div>

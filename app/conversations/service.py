@@ -35,6 +35,7 @@ from app.db.models import FounderOperationalLearning as FounderOperationalLearni
 from app.planning.schemas import PlanRequest
 from app.planning.service import create_plan
 from app.reasoning.client import ollama_status
+from app.ai.provider_manager import provider_manager
 from app.system.database import database_status
 
 
@@ -343,6 +344,7 @@ def conversation_engine_status() -> ConversationEngineStatus:
     db = database_status()
     health = capability_health()
     ollama = ollama_status()
+    providers = provider_manager.status()
     connectors = _connector_statuses()
     with SessionLocal() as session:
         total_sessions = session.query(ConversationSessionModel).count()
@@ -415,6 +417,8 @@ def conversation_engine_status() -> ConversationEngineStatus:
                 "text_to_speech",
             ],
             "modes": ["push_to_talk", "continuous_conversation", "interruptible"],
+            "reasoning_provider_ready": providers.ready,
+            "provider_manager": providers.model_dump(mode="json"),
         },
         pipeline=pipeline,
         diagnostics={
@@ -576,7 +580,7 @@ def voice_runtime_validation():
     category_checks = {
         "microphone": "microphone_permission" in status.voice.get("browser_requirements", []),
         "speech_to_text": "SpeechRecognition_or_webkitSpeechRecognition" in status.voice.get("browser_requirements", []),
-        "qwen_reasoning": status.ollama.get("model") == "qwen3:8b" and "current_model" in status.ollama,
+        "qwen_reasoning": bool(status.voice.get("reasoning_provider_ready")),
         "conversation": "conversation_session" in status.pipeline,
         "memory": "history_persistence" in status.pipeline and "conversation_memory" in pipeline,
         "business_context": "context_assembler" in status.pipeline,

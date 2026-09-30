@@ -36,6 +36,7 @@ from app.knowledge.importer import start_knowledge_watcher, stop_knowledge_watch
 from app.system.router import router as system_router
 from app.projects.router import router as projects_router
 from app.collaboration.router import router as collaboration_router
+from app.reasoning.router import health_router as reasoning_health_router
 from app.reasoning.router import router as reasoning_router
 from app.jira.router import router as jira_router
 from app.business.router import router as business_router
@@ -46,6 +47,7 @@ from app.demo.service import ensure_demo_data
 from app.commercial.router import router as commercial_router
 from app.sales.router import router as sales_router
 from app.marketing.router import router as marketing_router
+from app.hubspot.router import router as hubspot_router
 from app.copilot.router import router as copilot_router
 from app.auth.router import router as auth_router
 from app.auth.service import ensure_admin_user
@@ -57,6 +59,10 @@ from app.planning.router import router as planning_router
 from app.runtime.router import router as runtime_router
 from app.software_factory.router import router as software_factory_router
 from app.enterprise.router import router as enterprise_router
+from app.ai.router import router as ai_router
+from app.ai.provider_manager import start_provider_health_monitor, stop_provider_health_monitor
+from app.mcp.api.router import router as mcp_router
+from app.mcp.registry.service import ensure_default_servers
 from app.enterprise.schemas import AuditEventCreate
 from app.enterprise.service import ensure_enterprise_defaults, record_audit
 from app.settings import PardhaMode, get_settings
@@ -77,6 +83,7 @@ app.include_router(system_router)
 app.include_router(projects_router)
 app.include_router(collaboration_router)
 app.include_router(reasoning_router)
+app.include_router(reasoning_health_router)
 app.include_router(jira_router)
 app.include_router(communications_router)
 app.include_router(whatsapp_router)
@@ -85,6 +92,7 @@ app.include_router(demo_router)
 app.include_router(commercial_router)
 app.include_router(sales_router)
 app.include_router(marketing_router)
+app.include_router(hubspot_router)
 app.include_router(chief_router)
 app.include_router(capabilities_router)
 app.include_router(conversations_router)
@@ -92,6 +100,8 @@ app.include_router(planning_router)
 app.include_router(runtime_router)
 app.include_router(software_factory_router)
 app.include_router(enterprise_router)
+app.include_router(ai_router)
+app.include_router(mcp_router)
 
 _RATE_LIMIT_WINDOW_SECONDS = 60
 _RATE_LIMIT_MAX_REQUESTS = int(os.getenv("PARDHA_RATE_LIMIT_MAX", "1000"))
@@ -138,12 +148,15 @@ def startup_event():
         ensure_demo_data()
     ensure_default_capabilities()
     ensure_enterprise_defaults()
+    ensure_default_servers()
+    start_provider_health_monitor()
     start_knowledge_watcher()
     start_scheduler()
 
 
 @app.on_event("shutdown")
 def shutdown_event():
+    stop_provider_health_monitor()
     stop_knowledge_watcher()
     stop_scheduler()
 

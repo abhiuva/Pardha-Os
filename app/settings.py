@@ -17,8 +17,12 @@ class Settings:
     default_reasoning_model: str
     advanced_reasoning_model: str
     max_concurrent_reasoning: int
+    max_daily_reasoning_requests: int
     ollama_url: str
     ollama_timeout: float
+    ollama_connection_timeout: float
+    ollama_inference_timeout: float
+    ollama_retry_limit: int
     ollama_max_tokens: int
     ollama_context_size: int
     ollama_idle_timeout_seconds: int
@@ -27,6 +31,11 @@ class Settings:
     jira_email: str
     jira_api_token: str
     jira_project_key: str
+    openai_api_key: str
+    openai_model: str
+    connector_mode: str
+    reasoning_provider: str
+    reasoning_fallback: str
 
 
 def _enabled(name: str, default: str) -> bool:
@@ -37,12 +46,16 @@ def get_settings() -> Settings:
     mode = PardhaMode(os.getenv("PARDHA_MODE", PardhaMode.DEVELOPMENT.value).upper())
     return Settings(
         mode=mode,
-        ollama_enabled=_enabled("PARDHA_OLLAMA_ENABLED", "true"),
-        default_reasoning_model=os.getenv("PARDHA_DEFAULT_REASONING_MODEL", "qwen3:8b"),
+        ollama_enabled=_enabled("PARDHA_OLLAMA_ENABLED", "false"),
+        default_reasoning_model=os.getenv("PARDHA_DEFAULT_REASONING_MODEL", "llama3.2:3b"),
         advanced_reasoning_model=os.getenv("PARDHA_ADVANCED_REASONING_MODEL", "qwen3:8b"),
         max_concurrent_reasoning=max(1, int(os.getenv("MAX_CONCURRENT_REASONING", "1"))),
+        max_daily_reasoning_requests=max(1, int(os.getenv("PARDHA_MAX_DAILY_REASONING_REQUESTS", "100"))),
         ollama_url=os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/"),
         ollama_timeout=float(os.getenv("PARDHA_OLLAMA_TIMEOUT", "60")),
+        ollama_connection_timeout=float(os.getenv("PARDHA_OLLAMA_CONNECTION_TIMEOUT", "2")),
+        ollama_inference_timeout=float(os.getenv("PARDHA_OLLAMA_INFERENCE_TIMEOUT", os.getenv("PARDHA_OLLAMA_TIMEOUT", "60"))),
+        ollama_retry_limit=max(0, min(1, int(os.getenv("PARDHA_OLLAMA_RETRY_LIMIT", "1")))),
         ollama_max_tokens=int(os.getenv("PARDHA_OLLAMA_MAX_TOKENS", "384")),
         ollama_context_size=int(os.getenv("PARDHA_OLLAMA_CONTEXT_SIZE", "4096")),
         ollama_idle_timeout_seconds=max(5, int(os.getenv("PARDHA_OLLAMA_IDLE_TIMEOUT_SECONDS", "90"))),
@@ -51,4 +64,9 @@ def get_settings() -> Settings:
         jira_email=os.getenv("JIRA_EMAIL", ""),
         jira_api_token=os.getenv("JIRA_API_TOKEN", ""),
         jira_project_key=os.getenv("JIRA_PROJECT_KEY", ""),
+        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
+        openai_model=os.getenv("PARDHA_OPENAI_MODEL", "gpt-4.1-mini"),
+        connector_mode=os.getenv("PARDHA_CONNECTOR_MODE", "mock").lower(),
+        reasoning_provider=os.getenv("PARDHA_REASONING_PROVIDER", "deterministic").lower(),
+        reasoning_fallback=os.getenv("PARDHA_REASONING_FALLBACK", "deterministic").lower(),
     )

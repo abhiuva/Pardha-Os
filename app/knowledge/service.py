@@ -17,10 +17,17 @@ from app.db import SessionLocal
 from app.db.models import Event as EventModel
 from app.db.models import Knowledge as KnowledgeModel
 from app.db.models import KnowledgeImport as KnowledgeImportModel
-from app.knowledge.schemas import Knowledge, KnowledgeCategory, KnowledgeCreate, KnowledgeDeleteResult, KnowledgeUploadItem, KnowledgeUploadResult
+from app.knowledge.schemas import Knowledge, KnowledgeCategory, KnowledgeCreate, KnowledgeDeleteResult, KnowledgeSourceSummary, KnowledgeSummary, KnowledgeUploadItem, KnowledgeUploadResult
 
 
 SUPPORTED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".pptx", ".txt", ".md", ".markdown", ".csv", ".json"}
+DP360_EXPECTED_SOURCES = [
+    "dp360/architecture.json",
+    "dp360/company_profile.json",
+    "dp360/customer_problems.json",
+    "dp360/product_overview.json",
+    "dp360/roadmap.json",
+]
 
 
 def _model_to_dict(model: BaseModel | Dict[str, Any]) -> Dict[str, Any]:
@@ -236,6 +243,58 @@ def get_knowledge_by_business(
     category: Optional[KnowledgeCategory] = None,
 ) -> List[Knowledge]:
     return get_knowledge(business_name=business_name, category=category)
+
+
+def get_knowledge_summary(
+    business_name: Optional[str] = None,
+    business_id: Optional[str] = None,
+) -> KnowledgeSummary:
+    from app.business.service import get_active_business, get_business, get_business_by_name
+
+    if business_id:
+        business = get_business(business_id)
+    elif business_name:
+        business = get_business_by_name(business_name)
+    else:
+        business = get_active_business()
+    if business is None:
+        business = get_active_business()
+
+    rows = get_knowledge(business_id=business.business_id)
+    categories: dict[str, int] = {}
+    sources: list[KnowledgeSourceSummary] = []
+    for row in rows:
+        categories[row.category] = categories.get(row.category, 0) + 1
+        sources.append(
+            KnowledgeSourceSummary(
+                source=row.source,
+                source_uri=row.source_uri,
+                version=str(row.document_metadata.get("version")) if row.document_metadata.get("version") else None,
+                category=row.category,
+                title=row.title,
+            )
+        )
+    expected = DP360_EXPECTED_SOURCES if business.business_name.strip().lower() == "dp360" else []
+    available_uris = {source.source_uri for source in sources if source.source_uri}
+    missing = [source for source in expected if source not in available_uris]
+    return KnowledgeSummary(
+        business_id=business.business_id,
+        business_name=business.business_name,
+        total_records=len(rows),
+        categories=categories,
+        sources=sources,
+        expected_sources=expected,
+        missing_expected_sources=missing,
+        context_ready=len(rows) > 0 and not missing,
+        generated_at=datetime.now(timezone.utc),
+    )
+
+
+def load_dp360_knowledge_context() -> KnowledgeSummary:
+    from app.knowledge.importer import scan_knowledge_folders
+
+    scan_knowledge_folders()
+    return get_knowledge_summary(business_name="DP360")
 
 
 def _suffix(filename: str) -> str:

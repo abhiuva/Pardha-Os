@@ -5,8 +5,8 @@ from uuid import uuid4
 
 from app.db import SessionLocal
 from app.db.models import AgentReasoning as AgentReasoningModel
-from app.reasoning.client import OllamaUnavailable, generate_response
 from app.reasoning.context import build_business_context
+from app.reasoning.gateway import reasoning_gateway
 from app.reasoning.schemas import AgentReasoning
 
 
@@ -34,30 +34,22 @@ def reason_for_agent(
         "Use only the supplied local business context. Be concise and actionable.\n\n"
         f"BUSINESS CONTEXT:\n{build_business_context(business_id=business_id)}"
     )
-    source = "ollama"
-    selected_model = model
-    try:
-        response = generate_response(
-            prompt,
-            f"You are Pardha's {normalized_name.upper()} reasoning agent.",
-            selected_model,
-        )
-        from app.settings import get_settings
-
-        selected_model = selected_model or get_settings().default_reasoning_model
-    except OllamaUnavailable:
-        response = deterministic_fallback
-        source = "deterministic_fallback"
-        selected_model = "deterministic"
+    result = reasoning_gateway.generate(
+        prompt,
+        f"You are Pardha's {normalized_name.upper()} reasoning agent.",
+        model,
+        deterministic_fallback,
+    )
 
     row = AgentReasoningModel(
         reasoning_id=str(uuid4()),
         business_id=business_id,
         agent_name=normalized_name,
         prompt=prompt,
-        response=response,
-        model=selected_model,
-        source=source,
+        response=result.response,
+        model=result.model,
+        source=result.source,
+        provider_metadata=result.metadata,
         timestamp=datetime.now(timezone.utc),
     )
     with SessionLocal() as session:

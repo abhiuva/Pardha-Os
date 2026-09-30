@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from app.commercial.schemas import ConnectorStatus, ConnectorTestResult, DemoLoadResult, FounderDashboard, GuidedJourney, SystemHealth
-from app.commercial.service import connector_statuses, founder_dashboard, guided_journey, load_dp360_demo, system_health, test_connector
+from app.commercial.service import connector_statuses, dp360_command_center, founder_dashboard, guided_journey, load_dp360_demo, system_health, test_connector
 
 
 router = APIRouter(prefix="/commercial", tags=["commercial-readiness"])
@@ -22,6 +22,11 @@ def test_connector_route(provider: str):
 @router.get("/founder-dashboard", response_model=FounderDashboard)
 def get_founder_dashboard(business_id: str | None = Query(default=None)):
     return founder_dashboard(business_id=business_id)
+
+
+@router.get("/dp360-command-center", response_model=dict)
+def get_dp360_command_center():
+    return dp360_command_center()
 
 
 @router.get("/system/health", response_model=SystemHealth)
