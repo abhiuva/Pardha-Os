@@ -93,6 +93,7 @@ class ConversationResponsePayload(BaseModel):
     runtime_inspection: Dict[str, Any] = Field(default_factory=dict)
     reasoning_used: bool = False
     reasoning_provider: str = "deterministic"
+    reasoning_metadata: Dict[str, Any] = Field(default_factory=dict)
     response_style: str = "executive"
 
 

@@ -195,6 +195,8 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
         business_id = None
     conversation_type = route.category.lower().replace(" ", "_")
     intent = route.intent
+    requested_provider = "ollama" if route.reasoning_route == "ollama_qwen" else None
+    requested_model = "qwen3:8b" if route.reasoning_route == "ollama_qwen" else None
 
     with SessionLocal() as session:
         user = ConversationMessageModel(
@@ -266,6 +268,8 @@ def send_message(conversation_id: str | None, request: ConversationMessageReques
         structured_payload=payload,
         source_output=source_output,
         execution_ms=(execution.runtime_ms if execution else (payload.execution or {}).get("duration_ms", 0)),
+        requested_provider=requested_provider,
+        requested_model=requested_model,
     )
     assistant_content = payload.executive_summary
 
@@ -879,7 +883,7 @@ def _assistant_first_payload(message: str, route: ExecutiveRoute, context: dict)
             SuggestedAction(label="Continue conversation", intent="general_conversation", executable=False),
             SuggestedAction(label="Turn this into a plan", intent="planning_request", executable=True),
         ],
-        execution={"status": "answered", "reasoning_used": route.reasoning_route == "ollama_qwen", "planner_used": False, "duration_ms": 0},
+        execution={"status": "answered", "reasoning_used": False, "planner_used": False, "duration_ms": 0},
         verification={"summary": "Answered through Pardha without loading unrelated business context.", "status": "verified", "static_response": False},
     )
 

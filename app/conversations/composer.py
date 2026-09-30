@@ -6,7 +6,8 @@ from typing import Any
 
 from app.conversations.runtime_inspector import inspect_runtime, relevant_connectors
 from app.conversations.schemas import ConversationResponsePayload, SuggestedAction
-from app.reasoning.client import OllamaUnavailable, generate_response, ollama_status
+from app.reasoning.client import ollama_status
+from app.reasoning.gateway import reasoning_gateway
 
 
 INTERNAL_TERMS = (
@@ -31,9 +32,11 @@ def compose_executive_response(
     structured_payload: ConversationResponsePayload,
     source_output: Any = None,
     execution_ms: int = 0,
+    requested_provider: str | None = None,
+    requested_model: str | None = None,
 ) -> ConversationResponsePayload:
     runtime = inspect_runtime(founder_message, context)
-    reasoning = _reasoning_decision(founder_message, intent, source_output, runtime)
+    reasoning = _reasoning_decision(founder_message, intent, source_output, runtime, requested_provider, requested_model)
     response_text = _deterministic_response(
         founder_message=founder_message,
         intent=intent,
@@ -43,7 +46,7 @@ def compose_executive_response(
         source_output=source_output,
         runtime=runtime,
     )
-    if reasoning["required"] and runtime["ollama"].get("connected"):
+    if reasoning["required"]:
         response_text, reasoning = _ollama_response(
             founder_message=founder_message,
             intent=intent,
@@ -53,6 +56,8 @@ def compose_executive_response(
             runtime=runtime,
             fallback=response_text,
             reasoning=reasoning,
+            requested_provider=requested_provider,
+            requested_model=requested_model,
         )
 
     response_text = _polish(response_text)
@@ -77,6 +82,10 @@ def compose_executive_response(
             "founder_safe": not _contains_internal_language(response_text),
             "runtime_inspected": True,
             "reasoning_used": reasoning["used"],
+            "reasoning_provider": reasoning["provider"],
+            "reasoning_model": reasoning["model"],
+            "reasoning_source": reasoning["source"],
+            "fallback_used": reasoning["fallback_used"],
         }
     )
     return structured_payload.model_copy(
@@ -87,6 +96,7 @@ def compose_executive_response(
             "runtime_inspection": _compact_runtime(runtime),
             "reasoning_used": reasoning["used"],
             "reasoning_provider": reasoning["provider"],
+            "reasoning_metadata": _reasoning_metadata(reasoning),
             "response_style": "executive",
         }
     )
@@ -157,32 +167,76 @@ def _ollama_response(**kwargs) -> tuple[str, dict[str, Any]]:
         "verification": kwargs["payload"].verification,
         "source_output": kwargs["source_output"],
     }
-    try:
-        response = generate_response(
-            json.dumps(prompt, default=str)[:7000],
-            (
-                "You are Pardha, an executive Chief of Staff. Write a concise founder-facing answer. "
-                "Do not expose API names, capability IDs, adapters, or internal services unless explicitly requested. "
-                "Include the assessment, evidence basis, recommendation, and next action."
-            ),
-        )
-        reasoning.update({"used": True, "provider": "ollama", "error": None})
-        return response, reasoning
-    except (OllamaUnavailable, OSError, TimeoutError) as exc:
-        reasoning.update({"used": False, "provider": "deterministic", "error": str(exc)})
-        return kwargs["fallback"], reasoning
+    result = reasoning_gateway.generate(
+        json.dumps(prompt, default=str)[:7000],
+        (
+            "You are Pardha, an executive Chief of Staff. Write a concise founder-facing answer. "
+            "Do not expose API names, capability IDs, adapters, or internal services unless explicitly requested. "
+            "Include the assessment, evidence basis, recommendation, and next action."
+        ),
+        kwargs.get("requested_model"),
+        kwargs["fallback"],
+        provider=kwargs.get("requested_provider"),
+    )
+    metadata = result.metadata or {}
+    fallback_used = bool(metadata.get("fallback_used") or result.source == "deterministic_fallback" or result.provider == "deterministic")
+    reasoning.update(
+        {
+            "used": not fallback_used,
+            "provider": result.provider,
+            "model": result.model,
+            "source": result.source,
+            "fallback_used": fallback_used,
+            "requested_provider": metadata.get("requested_provider") or kwargs.get("requested_provider") or result.provider,
+            "requested_model": kwargs.get("requested_model"),
+            "fallback_provider": metadata.get("fallback_provider"),
+            "fallback_reason": metadata.get("fallback_reason"),
+            "error": metadata.get("fallback_reason"),
+            "metadata": metadata,
+        }
+    )
+    return result.response, reasoning
 
 
-def _reasoning_decision(message: str, intent: str, source_output: Any, runtime: dict[str, Any]) -> dict[str, Any]:
+def _reasoning_decision(
+    message: str,
+    intent: str,
+    source_output: Any,
+    runtime: dict[str, Any],
+    requested_provider: str | None = None,
+    requested_model: str | None = None,
+) -> dict[str, Any]:
     text = message.lower()
     complex_terms = ("strategy", "analyze", "recommend", "why", "roadmap", "plan", "growth", "retention", "risk", "review")
-    required = any(term in text for term in complex_terms) or intent in {"business_review", "product_review", "architecture_review", "business_strategy"}
+    required = bool(requested_provider or requested_model) or any(term in text for term in complex_terms) or intent in {"business_review", "product_review", "architecture_review", "business_strategy"}
+    provider = requested_provider or "deterministic"
+    model = requested_model or runtime.get("ollama", {}).get("current_model") or ollama_status().current_model
     return {
         "required": required,
         "used": False,
         "provider": "deterministic",
-        "model": runtime.get("ollama", {}).get("current_model") or ollama_status().current_model,
-        "reason": "complex_request" if required else "deterministic_platform_sufficient",
+        "model": model,
+        "source": "deterministic_fallback",
+        "fallback_used": True,
+        "requested_provider": provider if required else None,
+        "requested_model": requested_model,
+        "reason": "explicit_model_route" if requested_provider or requested_model else "complex_request" if required else "deterministic_platform_sufficient",
+        "metadata": {},
+    }
+
+
+def _reasoning_metadata(reasoning: dict[str, Any]) -> dict[str, Any]:
+    metadata = dict(reasoning.get("metadata") or {})
+    return {
+        "provider": reasoning.get("provider", "deterministic"),
+        "model": reasoning.get("model"),
+        "source": reasoning.get("source", "deterministic_fallback"),
+        "fallback_used": bool(reasoning.get("fallback_used", True)),
+        "reasoning_used": bool(reasoning.get("used", False)),
+        "requested_provider": reasoning.get("requested_provider"),
+        "requested_model": reasoning.get("requested_model"),
+        "fallback_provider": reasoning.get("fallback_provider") or metadata.get("fallback_provider"),
+        "fallback_reason": reasoning.get("fallback_reason") or metadata.get("fallback_reason"),
     }
 
 
