@@ -1,0 +1,10 @@
+fastapi
+pydantic
+uvicorn
+sqlalchemy
+psycopg2-binary
+httpx
+apscheduler
+watchdog
+python-multipart
+eval_type_backport
