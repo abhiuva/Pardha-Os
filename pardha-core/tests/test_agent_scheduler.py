@@ -87,7 +87,7 @@ class AgentSchedulerTestCase(unittest.TestCase):
         self.assertEqual(len(ceo_response.json()), 1)
         self.assertEqual(ceo_response.json()[0]["agent_name"], "ceo")
 
-    @patch("app.reasoning.service.generate_response")
+    @patch("app.reasoning.gateway.generate_response")
     def test_normal_cycle_never_invokes_ollama(self, generate):
         run_agent_cycle()
 
