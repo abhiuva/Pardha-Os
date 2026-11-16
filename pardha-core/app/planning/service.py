@@ -421,7 +421,10 @@ def _decide_plan(plan_id: str, decision: ApprovalDecision, status: str) -> Plann
         plan.status = "approved" if status == "approved" else "rejected"
         plan.approval_required = 0 if status == "approved" else plan.approval_required
         plan.updated_at = now
-        _timeline(session, plan.goal_id, plan_id, plan.business_id, f"approval_{status}", f"Plan {status.title()}", decision.comment, {})
+        _timeline(
+            session, plan.goal_id, plan_id, plan.business_id, f"approval_{status}", f"Plan {status.title()}", decision.comment,
+            {"claimed_decided_by": decision.decided_by, "decision_identity_verified": False, "authorizes_external_writes": False},
+        )
         session.commit()
     return get_plan(plan_id)
 

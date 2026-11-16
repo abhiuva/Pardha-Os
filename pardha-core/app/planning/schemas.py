@@ -86,10 +86,16 @@ class PlanApproval(BaseModel):
     detail: str
     status: str
     requested_by: str
+    # Caller-supplied label only; not an authenticated identity (PE0OM-75).
     decided_by: Optional[str]
     decision_comment: Optional[str]
     created_at: datetime
     decided_at: Optional[datetime]
+    # Until authentication exists (PE0OM-76/77), decisions can't be tied to a verified founder.
+    decision_identity_verified: bool = False
+    # A plan approval is not an exact-payload action approval; it never authorizes an external
+    # business-system write. That requires centralized HITL (PE0OM-78).
+    authorizes_external_writes: bool = False
 
 
 class PlanExecution(BaseModel):

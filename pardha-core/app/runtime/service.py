@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from time import perf_counter
 from uuid import uuid4
@@ -32,6 +33,8 @@ from app.runtime.schemas import (
     RuntimeStartRequest,
     ToolRuntimeInvocation,
 )
+
+logger = logging.getLogger(__name__)
 
 
 DEPARTMENTS = {
@@ -78,8 +81,10 @@ def start_execution(request: RuntimeStartRequest) -> RuntimeExecution:
     now = datetime.now(timezone.utc)
     with SessionLocal() as session:
         plan = session.get(ExecutionPlanModel, request.plan_id)
-        if plan is None:
-            raise ValueError("Plan not found.")
+        # PE0OM-75: a plan can only be executed in its own business context. A mismatch is
+        # reported exactly like a missing plan, so plan IDs aren't confirmed across businesses.
+        if plan is None or plan.business_id != request.business_id:
+            raise ValueError("Plan not found for this business.")
         execution = RuntimeExecutionModel(
             execution_id=str(uuid4()),
             business_id=request.business_id,
@@ -130,17 +135,37 @@ def process_queue(business_id: str) -> list[RuntimeExecution]:
         )
     results = []
     for row in rows:
-        if row.execution_id:
-            results.append(run_execution(row.execution_id))
-        elif row.capability_id:
-            results.append(_run_single_capability(row))
+        result = None
+        try:
+            if row.execution_id:
+                result = run_execution(row.execution_id)
+            elif row.capability_id:
+                result = _run_single_capability(row)
+        except Exception:
+            # One broken item (e.g. its execution no longer exists) must not jam the whole
+            # business queue. It is marked failed below and never retried automatically.
+            logger.exception("Runtime queue item %s failed during processing", row.queue_id)
+            result = None
+        if result is not None:
+            results.append(result)
         with SessionLocal() as session:
             fresh = session.get(RuntimeQueueItemModel, row.queue_id)
             if fresh is not None:
-                fresh.status = "completed"
+                # PE0OM-75: the queue item reflects the real outcome. Blocked or waiting work is
+                # never reported as completed. Items leave the "queued" state either way, so
+                # they are not picked up again automatically (no retry loop); waiting work
+                # runs again only through an explicit retry after approval.
+                fresh.status = _queue_outcome(result.status if result is not None else None)
                 fresh.updated_at = datetime.now(timezone.utc)
                 session.commit()
     return results
+
+
+def _queue_outcome(execution_status: str | None) -> str:
+    if execution_status in {"completed", "blocked", "waiting", "failed", "cancelled"}:
+        return execution_status
+    # Nothing executable on the item, or an unexpected state: never report success.
+    return "failed"
 
 
 def run_execution(execution_id: str) -> RuntimeExecution:
@@ -151,7 +176,12 @@ def run_execution(execution_id: str) -> RuntimeExecution:
         if execution is None:
             raise ValueError("Execution not found.")
         plan = session.get(ExecutionPlanModel, execution.plan_id)
-        gate, reason = planning_execution_gate(session, plan) if plan is not None else ("blocked", "Plan not found.")
+        if plan is None:
+            gate, reason = "blocked", "Plan not found."
+        elif plan.business_id != execution.business_id:
+            gate, reason = "blocked", "Plan does not belong to this execution's business."
+        else:
+            gate, reason = planning_execution_gate(session, plan)
         if gate != "allow":
             # PE0OM-75: same approval gate as the planning API; no node runs and the plan's
             # own status (e.g. "rejected") is left untouched.
@@ -344,7 +374,8 @@ def _run_single_capability(row: RuntimeQueueItemModel) -> RuntimeExecution:
     result = execute_capability(CapabilityExecutionRequest(intent="tool_runtime", capability_id=row.capability_id, business_id=row.business_id, payload=row.payload or {}))
     with SessionLocal() as session:
         execution = session.get(RuntimeExecutionModel, execution_id)
-        execution.status = "completed" if result.status == "succeeded" else "failed"
+        # A policy denial (PE0OM-75) is "blocked", distinct from an execution failure.
+        execution.status = {"succeeded": "completed", "denied": "blocked"}.get(result.status, "failed")
         execution.progress = 100 if result.status == "succeeded" else 0
         execution.duration_ms = result.runtime_ms
         execution.completed_at = datetime.now(timezone.utc)

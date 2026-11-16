@@ -94,6 +94,8 @@ def kernel_execute_route(request: CapabilityExecutionRequest):
         result = execute_capability(request)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if result.status == "denied":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=result.error)
     if result.status == "failed":
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.error)
     return result
