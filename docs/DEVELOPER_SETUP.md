@@ -41,6 +41,7 @@ PARDHA_SAFE_ENV=(
   PARDHA_KNOWLEDGE_WATCHER_ENABLED=false
   PARDHA_SCHEDULER_ENABLED=false
   PARDHA_JIRA_ENABLED=false
+  PARDHA_EXTERNAL_WRITES_ENABLED=false   # emergency write lockdown; enforced once PE0OM-75 is merged
 )
 
 # Live provider/connector credentials and network switches, removed per process with `env -u`.
@@ -64,11 +65,14 @@ PARDHA_UNSET_CREDENTIALS=(
 **Never run tests or the backend without an explicit `DATABASE_URL`.** The application's default is
 the local PostgreSQL database `pardha_core`, which must never be used by tests.
 
+These settings reduce local risk only. They **do not replace** backend authentication, project
+authorization or human approval (HITL) of external writes, which are being implemented under PE0OM-56.
+
 ## 4. Run the tests (new disposable database every run)
 
 Each run creates a fresh SQLite database in a new temporary directory and deletes that directory
-when the run ends, whether it passes or fails. The test database is separate from the runtime
-database in section 5.
+when the run ends, whether it passes or fails. The block's exit code is the test run's exit code.
+The test database is separate from the runtime database in section 5.
 
 ```bash
 (
