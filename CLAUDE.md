@@ -42,8 +42,10 @@ If the current branch isn't based on the approved `develop`, **STOP**.
 - One Jira item per branch, created from `develop`: `feature/PE0OM-XX-short-description` for stories,
   `fix/PE0OM-XX-short-description` for bugs, or the exact name the PO specifies.
 - Push to `origin/<branch>`; open the PR into `develop`.
-- A PR is merged only after Codex posts a PASS on it **and** the PO approves the merge.
-- No automatic merges. No squash or rebase that discards preserved history without PO approval.
+- **Changes to protected branches must be merged through pull requests using normal merge commits only.
+  Independent Codex QA and explicit Product Owner approval are mandatory before merge. No squash merge,
+  rebase merge, force-push, direct push or automatic merge.** A Codex verdict that contains security detail
+  is recorded privately in Jira instead of on the public PR.
 - Never overwrite an existing feature branch.
 - GitHub ruleset `protect-main-develop` enforces this on `main` and `develop`: PR required, merge commits only,
   no force-push, no deletion. Direct pushes (including fast-forwards) are rejected, so sync `develop` through a PR.
@@ -67,8 +69,20 @@ Keep FastAPI, React and PostgreSQL. Don't rebuild a working service just because
 - The **Chief of Staff** (OpenAI; model ID configurable, chosen on evidence) plans, delegates bounded tasks,
   tracks state, requests approval, verifies outcomes. Model output is never "verified business data".
   An action is never "executed" until the destination system confirms it.
-- **Specialist agents** (PE0OM-61..66) are design gates. Don't implement one without a PO-approved spec.
-  Never present deterministic behaviour as model-driven or as a delegated agent call.
+- **Specialist agents** are design gates. There are six, each with its own Jira design gate:
+
+  | Specialist | Jira design gate |
+  |---|---|
+  | Product Agent | PE0OM-61 |
+  | Engineering Agent | PE0OM-62 |
+  | Marketing Agent | PE0OM-63 |
+  | Sales Agent | PE0OM-64 |
+  | Operations Agent | PE0OM-65 |
+  | QA Agent | PE0OM-66 |
+
+  Every agent requires its **own** PO-approved design specification before any implementation. Approving one
+  specialist does not authorize implementation of another. Never present deterministic behaviour as
+  model-driven or as a delegated agent call.
 - **Personal Jarvis** (`stevensaint/jarvis`) is a candidate, **not approved**. No import without pinned commit,
   license/dependency review, isolated security and compatibility tests, and PO approval. Never import its shell,
   computer control, orchestrator or unrestricted tools. The fallback is Pardha's own React text chat.
@@ -77,7 +91,20 @@ Keep FastAPI, React and PostgreSQL. Don't rebuild a working service just because
 
 - Authentication on every sensitive endpoint; server-derived identity; tenant and project isolation; RBAC.
 - **Every external business-system write in V1 needs specific human approval bound to the exact payload.**
-  A changed payload needs new approval. Rejected or expired approvals never execute. Use durable idempotency for retries.
+  Approvals are **durably persisted** and must survive process restarts. Each approval record captures:
+  - the authenticated requesting actor;
+  - the project and tenant scope;
+  - the destination system;
+  - the exact proposed action and its payload hash;
+  - the decision-maker's identity and authorization;
+  - the approval status: pending, approved, rejected, expired or revoked;
+  - the expiration timestamp;
+  - immutable decision and audit events;
+  - the execution status and outcome;
+  - an idempotency key, with replay protection.
+
+  No rejected, expired, modified, unapproved or previously consumed action may execute. No request payload may
+  self-declare approval authority; approval authority comes only from the server-verified decision-maker.
 - Prompt-injection defences; restricted agent tool permissions; request and model-call tracing; token/cost/time limits.
 - API keys never reach the frontend or prompts. No production data or production writes in development tests.
 - Memory: PostgreSQL, permission-filtered retrieval, provenance, retention, correction and deletion. RAG is not training.
