@@ -63,4 +63,3 @@ Primary implementation: `app/conversations/service.py:176-344`.
 | Streaming | 20 | Buffered event sequence |
 
 **Chief of Staff readiness: 51%.**
-

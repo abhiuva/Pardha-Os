@@ -1,16 +1,27 @@
 # Codebase Inventory
 
-## Repository State
+## Current Repository State (verified 2026-11-16)
 
-| Item | Finding |
+| Item | State |
+|---|---|
+| Repository layout | Monorepo: the application is published as normal files under `pardha-core/` (279 files, history preserved; no gitlink, no `.gitmodules`) |
+| Monorepo conversion | PR #1 **merged** into `main` as `a924fcc` (normal merge commit); `develop` synced through PR #2 (`08e4bf5`) |
+| Imported source | `pardha-core/` tree is identical to source commit `422857f` |
+| Uncommitted CEO-agent prototype | **Not** part of this repository; preserved and backed up outside it (see PE0OM-73) |
+
+## Repository State: Historical Pre-Conversion Findings (audit of 2026-11-15)
+
+Preserved as original audit evidence. These describe the state **before** PR #1 and are no longer current.
+
+| Item | Finding at audit time |
 |---|---|
 | Parent repository | original local parent checkout, branch `feature/PE0OM-19-reasoning-gateway`, commit `12bd783` |
-| Application repository | original local `pardha-core` checkout, branch `feature/PE0OM-ceo-agent-mvp`, commit `422857f` (now published under `pardha-core/` in this repo) |
-| Parent linkage | Broken gitlink: `pardha-core` has no `.gitmodules` mapping |
-| Recovery work | Separate draft monorepo PR #1 exists on `chore/publish-pardha-monorepo`; not merged/deployed |
-| Application worktree | Existing uncommitted CEO-agent files; preserved unchanged |
+| Application repository | original local `pardha-core` checkout, branch `feature/PE0OM-ceo-agent-mvp`, commit `422857f` |
+| Parent linkage | Broken gitlink: `pardha-core` had no `.gitmodules` mapping (*resolved by PR #1*) |
+| Recovery work | Draft monorepo PR #1 on `chore/publish-pardha-monorepo`, not yet merged (*since merged*) |
+| Application worktree | Uncommitted CEO-agent files, preserved unchanged |
 
-The broken gitlink is a source-distribution risk: GitHub cannot reconstruct the full application from the parent repository alone.
+At audit time the broken gitlink was a source-distribution risk: GitHub couldn't reconstruct the full application from the parent repository alone. PR #1 resolved it.
 
 ## Backend Inventory
 
@@ -42,7 +53,7 @@ The broken gitlink is a source-distribution risk: GitHub cannot reconstruct the 
 
 ## Test and Delivery Inventory
 
-- 43 Python test files discovered; 159 tests executed in the audit.
+- 43 Python test files and 159 tests in the 2026-11-15 audit run. That run used the local working tree, which included one uncommitted CEO-agent test file (4 tests). The committed monorepo has 42 test files and 155 tests (see the audit index).
 - No CI workflow, Dockerfile, Compose, or Kubernetes manifest was found in the audited tree.
 - No automated browser/UI test suite was found.
 - README documents selected unittest commands, not a single canonical quality gate.
@@ -58,4 +69,3 @@ The broken gitlink is a source-distribution risk: GitHub cannot reconstruct the 
 - Connector mode defaults to `mock` (`app/settings.py:69`).
 - Development mode is the default (`app/settings.py:46`).
 - CORS is fixed to `http://localhost:5174` (`app/main.py:72-78`), creating likely local mismatch with Vite’s usual 5173.
-

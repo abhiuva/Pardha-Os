@@ -1,8 +1,8 @@
 # Pardha Developer Setup
 
-Verified on 2026-11-16 from a fresh clone (PR #1 head `13c2195`, re-verified on the merged
-`main` `a924fcc` and `develop` `08e4bf5`), macOS (Apple Silicon), Python 3.14.6, Node 23.11.0.
-Commands run from the repository root unless stated.
+Verified on 2026-11-16 on macOS (Apple silicon) with **Python 3.14.6** and Node 23.11.0, against
+`develop` after PR #3 and PR #4 (`97890a1`). Other Python versions have **not** been verified.
+Commands work in `bash` and `zsh`.
 
 ## 1. Clone
 
@@ -12,59 +12,110 @@ cd Pardha-Os
 git switch develop        # development baseline; feature branches start here
 ```
 
-## 2. Backend
+## 2. Backend install
 
 ```bash
 cd pardha-core
-python3.14 -m venv venv
+python3 --version         # verified with 3.14.6; use that version where possible
+python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ```
 
-`requirements.txt` is unpinned. The set that was verified is in
-`docs/audits/sprint0/evidence/pip-freeze-py314.txt`.
+`requirements.txt` is unpinned. A fresh install may resolve newer versions than the
+[historical dependency-resolution snapshot](audits/sprint0/evidence/pip-freeze-py314.txt) recorded on
+2026-11-16. That file is evidence of what was tested, **not a lock file**.
 
-### Safe local environment
+## 3. Safe local environment
 
-**Always set `DATABASE_URL` explicitly.** The default is local PostgreSQL
-`pardha_core`, and many tests don't override it.
+All remaining commands run from `pardha-core/`. Define these two lists once per shell session. They
+are only used to build each command's own environment: your real shell environment and credentials
+are never modified or deleted.
 
 ```bash
-export DATABASE_URL="sqlite:///$PWD/pardha_local.db"   # *.db is git-ignored
-export PARDHA_CONNECTOR_MODE=mock
-export PARDHA_OLLAMA_ENABLED=false
-export PARDHA_REASONING_PROVIDER=deterministic
-export PARDHA_REASONING_FALLBACK=deterministic
-export PARDHA_JWT_SECRET="$(openssl rand -hex 32)"     # always set a strong random value
+# Background services off, mock connectors, deterministic reasoning, Jira disabled.
+PARDHA_SAFE_ENV=(
+  PARDHA_CONNECTOR_MODE=mock
+  PARDHA_OLLAMA_ENABLED=false
+  PARDHA_REASONING_PROVIDER=deterministic
+  PARDHA_REASONING_FALLBACK=deterministic
+  PARDHA_KNOWLEDGE_WATCHER_ENABLED=false
+  PARDHA_SCHEDULER_ENABLED=false
+  PARDHA_JIRA_ENABLED=false
+)
+
+# Live provider/connector credentials and network switches, removed per process with `env -u`.
+PARDHA_UNSET_CREDENTIALS=(
+  -u DATABASE_URL
+  -u OPENAI_API_KEY
+  -u JIRA_URL -u JIRA_EMAIL -u JIRA_API_TOKEN -u JIRA_PROJECT_KEY
+  -u HUBSPOT_ACCESS_TOKEN -u HUBSPOT_PORTAL_ID
+  -u META_ACCESS_TOKEN -u META_AD_ACCOUNT_ID -u META_BUSINESS_ACCOUNT_ID
+  -u META_INSTAGRAM_ACCOUNT_ID -u META_PAGE_ID
+  -u GITHUB_TOKEN
+  -u GMAIL_CLIENT_ID -u GMAIL_CLIENT_SECRET -u GMAIL_REFRESH_TOKEN -u PARDHA_GMAIL_ACCESS_TOKEN
+  -u OUTLOOK_CLIENT_ID -u OUTLOOK_CLIENT_SECRET -u OUTLOOK_REFRESH_TOKEN -u OUTLOOK_TENANT_ID
+  -u PARDHA_OUTLOOK_ACCESS_TOKEN
+  -u GOOGLE_CALENDAR_CLIENT_ID -u GOOGLE_CALENDAR_CLIENT_SECRET -u GOOGLE_CALENDAR_REFRESH_TOKEN
+  -u PARDHA_WHATSAPP_ACCESS_TOKEN -u PARDHA_WHATSAPP_PHONE_NUMBER_ID
+  -u PARDHA_COMMUNICATIONS_ENABLE_NETWORK -u PARDHA_WHATSAPP_ENABLE_NETWORK
+)
 ```
 
-Leave `OPENAI_API_KEY`, `JIRA_*`, `HUBSPOT_*`, `META_*` and `PARDHA_WHATSAPP_*` unset unless
-a story explicitly approves live access.
+**Never run tests or the backend without an explicit `DATABASE_URL`.** The application's default is
+the local PostgreSQL database `pardha_core`, which must never be used by tests.
 
-### Run
+## 4. Run the tests (new disposable database every run)
+
+Each run creates a fresh SQLite database in a new temporary directory and deletes that directory
+when the run ends, whether it passes or fails. The test database is separate from the runtime
+database in section 5.
 
 ```bash
-./venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
-curl http://127.0.0.1:8000/          # {"name":"Pardha","status":"alive"}
+(
+  set -eu
+  TEST_DB_DIR="$(mktemp -d)"
+  trap '[ -n "$TEST_DB_DIR" ] && rm -rf -- "$TEST_DB_DIR"' EXIT
+  TEST_DATABASE_URL="sqlite:///$TEST_DB_DIR/pardha_test.db"
+  # Pre-flight: refuse anything that is not a fresh file in the new temporary directory.
+  [ ! -e "$TEST_DB_DIR/pardha_test.db" ] || { echo "Refusing: test database already exists" >&2; exit 1; }
+  env "${PARDHA_UNSET_CREDENTIALS[@]}" "${PARDHA_SAFE_ENV[@]}" \
+    DATABASE_URL="$TEST_DATABASE_URL" \
+    PARDHA_JWT_SECRET="$(openssl rand -hex 32)" \
+    ./venv/bin/python -m unittest discover -s tests
+)
 ```
 
-### Tests
+Expected on `develop` (`97890a1`): `Ran 155 tests` and `OK`. SQLite `ResourceWarning` messages about
+unclosed connections are a known, pre-existing issue.
+
+Code-level enforcement (tests refuse to start on an unset, developer or non-disposable database) is
+being added under PE0OM-75 and isn't on `develop` yet. Until it is, these commands are the safeguard.
+
+## 5. Run the backend (separate runtime database)
+
+The runtime database is a persistent local SQLite file outside the repository, separate from the
+test database. Bind to localhost only: the API is not yet authenticated and must not be exposed.
 
 ```bash
-./venv/bin/python -m unittest discover -s tests
+PARDHA_DEV_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/pardha-dev"
+mkdir -p "$PARDHA_DEV_DATA_DIR"
+env "${PARDHA_UNSET_CREDENTIALS[@]}" "${PARDHA_SAFE_ENV[@]}" \
+  DATABASE_URL="sqlite:///$PARDHA_DEV_DATA_DIR/pardha_dev.db" \
+  PARDHA_JWT_SECRET="$(openssl rand -hex 32)" \
+  ./venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Expected on the `develop` baseline `08e4bf5`: 155 tests, 1 known error
-(`test_agent_scheduler.test_normal_cycle_never_invokes_ollama`, a stale mock target),
-fixed by PE0OM-72 (PR #3). After that merges: 155 tests, OK.
+In a second terminal: `curl http://127.0.0.1:8000/` returns `{"name":"Pardha","status":"alive"}`.
+A new random `PARDHA_JWT_SECRET` per start invalidates earlier local sessions, which is intended.
 
-## 3. Dashboard
+## 6. Dashboard
 
 ```bash
-cd pardha-core/dashboard
+cd dashboard              # from pardha-core/
 npm ci
 npm run build                                   # production build
 npm run dev -- --host 127.0.0.1 --port 5174     # dev server; backend CORS allows 5174 only
 ```
 
-The Vite dev server proxies API calls to `http://127.0.0.1:8000`.
-Only `npm run build` was verified on 2026-11-16. The dev server wasn't exercised.
+The Vite dev server proxies `/api` calls to `http://127.0.0.1:8000`. Only `npm run build` was
+verified on 2026-11-16; the dev server wasn't exercised.

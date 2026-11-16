@@ -40,7 +40,7 @@ SQLite database, mock connectors, Ollama disabled, deterministic reasoning and n
 
 | Check | Result |
 |---|---|
-| Backend install (Python 3.14.6) | PASS. Resolved versions in [`evidence/pip-freeze-py314.txt`](evidence/pip-freeze-py314.txt) |
+| Backend install (Python 3.14.6) | PASS. Versions resolved on 2026-11-16 are recorded in [`evidence/pip-freeze-py314.txt`](evidence/pip-freeze-py314.txt), a historical snapshot, not a lock file. `requirements.txt` is unpinned, so a later install may resolve newer versions. |
 | Backend boot, `GET /` | 200 in about 2.6 s |
 | Dashboard `npm ci && npm run build` | PASS |
 | Unit tests | Baseline: 155 run, 1 error (a stale mock target in the scheduler test, not a product regression). Fixed by **PE0OM-72** (PR #3, merged after Codex PASS): 155 run, OK |

@@ -41,4 +41,3 @@ Sources: [Colibri repository](https://github.com/JustVugg/colibri), [Colibri doc
 ## Recommendation
 
 **No-go as Pardha’s default on the current 8 GB M1.** **Go as a time-boxed experimental provider adapter on better hardware or with a specifically justified supported model.** MLX-LM and llama.cpp are higher-priority local benchmarks; Ollama remains the lowest-friction operational choice.
-

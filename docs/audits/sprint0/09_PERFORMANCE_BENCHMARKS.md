@@ -34,7 +34,7 @@ Median of scenario medians: approximately 338 ms. These results exceed the old `
 
 ## Test Suite
 
-Command: unittest discovery with isolated SQLite and external providers disabled.
+Command: unittest discovery with isolated SQLite and external providers disabled. This 2026-11-15 run used the original local working tree, which included 4 tests from the uncommitted CEO-agent prototype; the committed monorepo has 155 tests (see the audit index).
 
 - Ran: 159
 - Passed: 158
@@ -55,4 +55,3 @@ Command: unittest discovery with isolated SQLite and external providers disabled
 ## Hypotheses Requiring Future Measurement
 
 The following are not measured findings: PostgreSQL p95 under concurrent users, Ollama tokens/second, cloud-provider latency/cost, dashboard Largest Contentful Paint, scheduler CPU impact, and connector rate-limit behavior. Measure these only after canonical workflows and provider clients are stabilized.
-

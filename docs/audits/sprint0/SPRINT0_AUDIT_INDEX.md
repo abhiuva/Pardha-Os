@@ -1,10 +1,10 @@
 # Pardha Sprint 0 Audit Index
 
-Audit date: 2026-11-15  
-Scope: read-only architecture, intelligence, safety, provider, connector, memory, performance, and local inference audit.  
-Baseline: `pardha-core` commit `422857fb3388cda58ae3e47bd346944590045612`, branch `feature/PE0OM-ceo-agent-mvp`.
+- **Audit date:** 2026-11-15
+- **Scope:** read-only architecture, intelligence, safety, provider, connector, memory, performance, and local inference audit.
+- **Source commit:** `pardha-core` commit `422857fb3388cda58ae3e47bd346944590045612`, branch `feature/PE0OM-ceo-agent-mvp`, audited in the original local working tree.
 
-The working tree contained pre-existing uncommitted CEO-agent work (`app/main.py`, `dashboard/src/App.jsx`, `app/ceo_agent/`, `tests/test_ceo_agent_mvp.py`). It is assessed separately and is not treated as committed product behavior. No application code, database, deployment, or external service was changed by this audit.
+That working tree also contained pre-existing **uncommitted** CEO-agent work (`app/main.py`, `dashboard/src/App.jsx`, `app/ceo_agent/`, `tests/test_ceo_agent_mvp.py`). It was assessed separately, is not treated as committed product behavior, and is **not part of this repository**. No application code, database, deployment, or external service was changed by this audit.
 
 ## Reports
 
@@ -38,9 +38,15 @@ The working tree contained pre-existing uncommitted CEO-agent work (`app/main.py
 
 ## Validation Snapshot
 
-- Python suite: 159 tests, 158 passed, 1 error in 14.325 seconds.
-- Failure: `tests.test_agent_scheduler.AgentSchedulerTestCase.test_normal_cycle_never_invokes_ollama` patches removed symbol `app.reasoning.service.generate_response`.
-- Controlled conversation scenarios: 10/10 returned HTTP 201; zero used model reasoning.
+Python test results, by what was actually run:
+
+| Date | Code under test | Tests | Result |
+|---|---|---:|---|
+| 2026-11-15 | Original local audit working tree: commit `422857f` **plus uncommitted CEO-agent files** (4 extra tests, not in this repository) | 159 | 158 passed, 1 error (14.325 s) |
+| 2026-11-16 | Committed monorepo baseline: PR #1 head `13c2195`; same tree as `main` `a924fcc` and `develop` `08e4bf5` | 155 | 154 passed, 1 error |
+| 2026-11-16 | `develop` after PR #3 (`4c93f5b`, PE0OM-72); unchanged by PR #4 (`97890a1`) | 155 | 155 passed |
+
+- The single error in the first two runs was `test_agent_scheduler.AgentSchedulerTestCase.test_normal_cycle_never_invokes_ollama`, which patched the removed symbol `app.reasoning.service.generate_response`. It was a stale test, fixed by PE0OM-72.
+- Controlled conversation scenarios (2026-11-15): 10/10 returned HTTP 201; zero used model reasoning.
 - Production PostgreSQL was not queried or changed.
 - No external connector write was performed.
-

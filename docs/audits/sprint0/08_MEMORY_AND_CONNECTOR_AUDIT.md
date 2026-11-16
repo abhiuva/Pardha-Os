@@ -51,4 +51,3 @@ An isolated benchmark inserted unique markers into DP360 and EatOnTime. A conver
 - Use hybrid retrieval only after access control is enforced at query time.
 - Define connector states as `unconfigured`, `configured`, `auth_failed`, `connected`, `degraded`, and `mock`; never collapse configuration into connection.
 - Route all connector writes through one approval/policy executor.
-

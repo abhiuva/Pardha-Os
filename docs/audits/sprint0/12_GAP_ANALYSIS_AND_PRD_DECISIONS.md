@@ -32,7 +32,7 @@
 7. **Provider SLOs:** Establish accuracy, latency, availability, and cost budgets by task class.
 8. **Memory policy:** Define provenance, retention, deletion, supersession, sensitivity, and retrieval rules.
 9. **Demo vs production:** Remove ambiguous mock “success” states and show mode prominently.
-10. **Source distribution:** Merge the reviewed monorepo recovery PR so the complete source and history are reproducible.
+10. **Source distribution:** Merge the reviewed monorepo recovery PR so the complete source and history are reproducible. *(Historical recommendation, completed 2026-11-16: PR #1 merged into `main` as `a924fcc` and synced to `develop`.)*
 
 ## Recommended 90-Day Plan
 
@@ -62,4 +62,3 @@
 ## Release Decision
 
 **Do not market current Pardha as autonomous or enterprise-secure.** It is suitable for a controlled founder-led prototype demonstration with deterministic responses, mock connectors, and explicit disclosure. A paid pilot should begin only after P0 identity, isolation, HITL, connector truth, and execution-verification gaps are closed.
-

@@ -51,4 +51,3 @@ Delegation is represented by planned capabilities and persisted nodes. The contr
 ## Required v1 Change
 
 Keep departments as tool domains. Add one accountable orchestrator that uses structured model output for intent/plan proposals, then passes every action through policy, approval, idempotency, execution, and verification services. Introduce specialist model loops only where they demonstrably outperform deterministic tools.
-

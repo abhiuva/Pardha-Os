@@ -74,4 +74,3 @@ Success requires tool-specific postconditions. External writes must be read back
 8. Add production observability and deployment automation.
 
 This sequence reuses existing services and avoids a high-risk rewrite.
-

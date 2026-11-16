@@ -66,4 +66,3 @@ sequenceDiagram
 ## Consolidation Recommendation
 
 Designate `/conversations`, `/planning`, `/capabilities`, `/runtime`, and a central `/approvals` service as canonical. Keep domain APIs internal or require the same policy middleware. Deprecate the legacy Chief-of-Staff endpoints after migration, and distinguish audit events from durable commands/events.
-

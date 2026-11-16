@@ -56,4 +56,3 @@ Route by task properties, not agent name:
 | External write | Any planner -> central HITL gate | Never auto-fallback to write |
 
 Persist provider, model, prompt version, latency, token usage, estimated cost, data classification, confidence, and fallback reason for every model call.
-
