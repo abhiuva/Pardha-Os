@@ -18,7 +18,7 @@ The broken gitlink is a source-distribution risk: GitHub cannot reconstruct the 
 |---|---|---|
 | Application composition | `app/main.py` | Implemented; startup performs DB/admin/demo/capability/scheduler work |
 | Data layer | `app/db/`, `migrations/` | 34 migration files; PostgreSQL default; model/schema parity not proven here |
-| Business context | `app/business/` | Implemented; active context is process-level, not user-session scoped |
+| Business context | `app/business/` | Implemented; per-session context scoping planned (PE0OM-56) |
 | Knowledge | `app/knowledge/` | Upload/extract/dedupe/search/delete implemented |
 | Core agents | `app/agents/` | CEO/PM/CTO deterministic services and scheduler |
 | Conversation | `app/conversations/` | Persistent, structured, rule-routed; partial streaming/model use |
@@ -28,7 +28,7 @@ The broken gitlink is a source-distribution risk: GitHub cannot reconstruct the 
 | Sales/Marketing | `app/sales/`, `app/marketing/` | Functional deterministic workspaces with mock/read-first integrations |
 | Connectors | `app/jira/`, `app/hubspot/`, `app/communications/`, `app/whatsapp/`, `app/mcp/` | Mixed real, mock, and draft-only implementations |
 | Enterprise | `app/enterprise/` | Broad models/status surfaces; enforcement depth varies |
-| Auth | `app/auth/` | Login/session implemented; not globally enforced |
+| Auth | `app/auth/` | Login/session implemented; API-wide enforcement in progress (PE0OM-56) |
 | Software factory | `app/software_factory/` | Artifact planning, not autonomous code production/deployment |
 
 ## Frontend Inventory

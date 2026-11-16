@@ -19,8 +19,8 @@ No evidence was found of Kafka, RabbitMQ, Redis Streams, NATS, Celery, Temporal,
 | Domain | Prefix / important endpoints | Notes |
 |---|---|---|
 | Health/system | `/`, `/system/*`, `/commercial/system/health` | Multiple overlapping status models |
-| Auth | `/auth/login`, `/auth/session`, `/auth/profile`, `/auth/logout` | Protection not globally applied |
-| Businesses | `/businesses`, `/context/switch`, `/context/current` | Active context is global process state |
+| Auth | `/auth/login`, `/auth/session`, `/auth/profile`, `/auth/logout` | API-wide enforcement in progress (PE0OM-56) |
+| Businesses | `/businesses`, `/context/switch`, `/context/current` | Context to be bound to the authenticated session (PE0OM-56) |
 | Conversation | `/conversations`, `/conversations/messages`, `/conversations/stream` | New canonical stack |
 | Legacy Chief of Staff | `/chief-of-staff/chat`, `/goals`, `/executive-command` | Overlaps conversation/planning |
 | Capabilities | `/capabilities/*`, `/kernel/execute`, `/kernel/resolve` | Dynamic registry with direct adapters |
@@ -57,11 +57,11 @@ sequenceDiagram
 ## Contract Risks
 
 - The API surface contains duplicate concepts: goals/objectives, two conversation stacks, several health endpoints, several approval types.
-- Domain services can be called directly, bypassing the conversation planner and approval controls.
+- Not all domain endpoints route through the conversation planner and approval controls yet; a single policy layer is planned (PE0OM-56).
 - Capability health can indicate registry availability without validating downstream dependency health.
 - There is no consistent idempotency key on external action endpoints.
 - Event records are not guaranteed delivery mechanisms.
-- Active business switching is unsafe for concurrent users because it is not bound to authenticated session/tenant context.
+- Active-business switching must be bound to the authenticated session and tenant context (PE0OM-56).
 
 ## Consolidation Recommendation
 

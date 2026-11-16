@@ -5,8 +5,8 @@
 | Agent/Department | Runtime implementation | Model use | Context | Tools/actions | Collaboration | Status |
 |---|---|---|---|---|---|---|
 | CEO | Aggregates agents, events, memories and priorities in `app/agents/ceo.py:142+` | None in normal brief | Business filtered | Read/brief | Receives scripted workflow events | Deterministic service |
-| PM | Backlog/roadmap aggregation in `app/agents/pm.py:264-316` | None | Business filtered | Jira helper methods can write | Calls CEO/CTO functions directly | Deterministic service with risky helpers |
-| CTO | Project/event/memory categorization in `app/agents/cto.py:326-414` | None | Business filtered | Jira helper methods can write | Called by PM/workflow | Deterministic service with risky helpers |
+| PM | Backlog/roadmap aggregation in `app/agents/pm.py:264-316` | None | Business filtered | Jira helpers (write-capable; to be gated by central HITL, PE0OM-56) | Calls CEO/CTO functions directly | Deterministic service; write helpers pending HITL gating |
+| CTO | Project/event/memory categorization in `app/agents/cto.py:326-414` | None | Business filtered | Jira helpers (write-capable; to be gated by central HITL, PE0OM-56) | Called by PM/workflow | Deterministic service; write helpers pending HITL gating |
 | Sales | CRM/domain service and templates in `app/sales/` | None in core flows | Business filtered | Local CRM, drafts, booking | Exposed as capabilities | Implemented department service |
 | Marketing | Campaign/content/analytics service in `app/marketing/` | None in core flows | Business filtered | Local records; Meta draft gate | Exposed as capabilities | Implemented department service |
 | Operations | Runtime queues, notifications, automation in `app/runtime/` | None | Business filtered | Executes registered adapters | Reads planning approvals | Partial execution service |

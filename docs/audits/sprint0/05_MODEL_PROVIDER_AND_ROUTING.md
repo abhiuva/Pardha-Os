@@ -31,7 +31,7 @@ flowchart LR
 
 ## Provider Availability Finding
 
-The local Ollama binary exists, but `ollama list` returned no model rows during the audit. This does not prove the daemon or models are ready. No inference was started because the audit forbids downloads and unnecessary runtime changes.
+Local Ollama model availability was not verified during the audit. No inference was started, because the audit forbade downloads and unnecessary runtime changes.
 
 ## Accuracy and Safety Risks
 

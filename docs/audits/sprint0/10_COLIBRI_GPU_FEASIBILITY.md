@@ -6,11 +6,10 @@ The name “Colibri” is ambiguous. For this audit it refers to [`JustVugg/coli
 
 ## Audited Host
 
-- Apple M1 MacBook Air
+- Apple-silicon laptop class (M1 generation)
 - 8 GB unified memory
 - 8 CPU cores
-- arm64 macOS 26.6.2
-- Ollama binary installed; no local model inventory was confirmed
+- Local model inventory not verified
 
 ## Feasibility Finding
 

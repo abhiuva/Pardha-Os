@@ -13,7 +13,7 @@ claimed here.
 | Source commit (original `pardha-core`) | `422857fb3388cda58ae3e47bd346944590045612` |
 | Monorepo PR #1 head | `13c21955d45841a833d455dfca8b687d04cfdd54` |
 | `main` after PR #1 (merge commit) | `a924fcc623df34426545517b73795447be9904df` |
-| `develop` after sync PR #2 (merge commit) | `08e4bf51ae1d87a42ee12a78ddf5c2f36ce5b23a` |
+| `develop` after sync PR #2 (merge commit) | `08e4bf51ae1d87a42ee12a78ddf5c2f36ce5b23a` (later: PR #3 `4c93f5b`, PR #4 `97890a1`) |
 | `pardha-core/` tree hash | `7c792c1c21fb76b5eaef8db1eb8c196d3519aade` (identical to the source commit's tree) |
 
 ## 2. Monorepo publication (PE0OM-40)
@@ -28,9 +28,10 @@ claimed here.
 | `develop` synced through a merge-commit PR; tree identical to `main` | PASS |
 | Clean clone contains `app/`, `dashboard/`, `migrations/`, `tests/`, `scripts/` | PASS |
 
-Process note: PR #1 was merged before its independent Codex QA report was submitted. This is
-recorded as a process deviation; a retrospective verification found no differences and a
-retrospective Codex review has been requested.
+Process note: Codex completed independent QA of PR #1 before the merge (verdict: PASS WITH
+CONDITIONS for the repository conversion; the conditions are the pre-existing baseline gaps in
+section 6). Its report wasn't recorded on the PR or in Jira before merging, which is logged as a
+historical process deviation. A retrospective re-verification of the merged result found no differences.
 
 ## 3. Build, run and tests
 
@@ -42,7 +43,7 @@ SQLite database, mock connectors, Ollama disabled, deterministic reasoning and n
 | Backend install (Python 3.14.6) | PASS. Resolved versions in [`evidence/pip-freeze-py314.txt`](evidence/pip-freeze-py314.txt) |
 | Backend boot, `GET /` | 200 in about 2.6 s |
 | Dashboard `npm ci && npm run build` | PASS |
-| Unit tests on the baseline | 155 run, 1 error: a stale mock target in the scheduler test, not a product regression. Fixed by **PE0OM-72** (PR #3) |
+| Unit tests | Baseline: 155 run, 1 error (a stale mock target in the scheduler test, not a product regression). Fixed by **PE0OM-72** (PR #3, merged after Codex PASS): 155 run, OK |
 
 ## 4. Secret scanning
 

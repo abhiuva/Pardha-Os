@@ -19,7 +19,7 @@ Pardha has multiple overlapping memory concepts:
 | Semantic retrieval | Missing | Search is lowercase substring matching (`:98-123`) |
 | Embeddings/vector store | Not operational | Fields may exist, but no active embedding pipeline was found |
 | Consolidated memory policy | Missing | Several memory models and stores overlap |
-| Retention/deletion policy | Missing | Generic clear/delete operations lack tenant policy |
+| Retention/deletion policy | Missing | No tenant-level retention/deletion policy defined yet |
 | Provenance/evidence | Partial | Knowledge has source metadata; generic memory is weaker |
 | Learning | Rules only | Signals are stored; no model adaptation occurs |
 
@@ -42,7 +42,7 @@ Knowledge upload is not training. Files are validated, text extracted, hashed fo
 
 ## Context Isolation Test
 
-An isolated benchmark inserted unique markers into DP360 and EatOnTime. A conversation scoped to EatOnTime did not include the DP360 marker. This supports business-filtering behavior for that path only; it is not proof of adversarial tenant isolation because authentication and tenant authorization were disabled in the fixture.
+An isolated benchmark inserted unique markers into DP360 and EatOnTime. A conversation scoped to EatOnTime did not include the DP360 marker. This supports business-filtering behavior for that path only; it is not proof of adversarial tenant isolation, which is verified separately under PE0OM-56.
 
 ## Key Recommendations
 

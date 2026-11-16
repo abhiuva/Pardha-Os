@@ -4,7 +4,7 @@
 
 These are controlled local measurements, not production benchmarks. The backend used an isolated SQLite database in a temporary directory, deterministic reasoning, Ollama disabled, connector mode `mock`, Jira disabled, and knowledge watcher disabled. Each scenario ran three times through FastAPI `TestClient`; the table reports median and maximum end-to-end request time.
 
-Host: MacBook Air, Apple M1, 8 CPU cores, 8 GB unified memory, arm64, macOS 26.6.2. Hardware identifiers are intentionally omitted.
+Host: Apple-silicon laptop class (8 CPU cores, 8 GB unified memory). Device and OS identifiers are intentionally omitted.
 
 ## Results
 

@@ -6,12 +6,12 @@
 |---|---|---:|---|---|---|
 | Unified Chief of Staff | Two overlapping stacks | 50 | P0 | 2-3 weeks | `conversations/`, `chief_of_staff/` |
 | Intent/model routing | Keyword + partial gateway | 35 | P0 | 2 weeks | `executive_router.py`, `reasoning/` |
-| Global auth/RBAC | Login exists; enforcement absent | 25 | P0 | 2-4 weeks | `auth/`, router dependencies, tenant filters |
-| HITL enforcement | Records exist; bypass paths | 45 | P0 | 2-3 weeks | planning, runtime, all connectors |
+| Global auth/RBAC | Login exists; API-wide enforcement in progress | 25 | P0 | 2-4 weeks | `auth/`, router dependencies, tenant filters |
+| HITL enforcement | Records exist; not yet universal | 45 | P0 | 2-3 weeks | planning, runtime, all connectors |
 | Durable execution | Local queue/runtime partial | 40 | P0 | 3-5 weeks | `runtime/`, outbox/idempotency |
 | Provider support | Ollama + deterministic only | 40 | P1 | 2-3 weeks | OpenAI/Claude adapters, metrics |
 | Agent collaboration | Scripted direct calls | 35 | P1 | 2-4 weeks | collaboration/event contracts |
-| Business isolation | Query filtering, weak authorization | 50 | P0 | Included with auth | all repositories/services |
+| Business isolation | Query filtering; authorization in progress | 50 | P0 | Included with auth | all repositories/services |
 | Memory | Persistent but fragmented/lexical | 45 | P1 | 3 weeks | memory, knowledge, conversation models |
 | Connector truthfulness | Mixed real/mock/status | 45 | P0 | 2 weeks | connector status contracts |
 | Knowledge ingestion | Broad formats, lexical retrieval | 75 | P1 | 1-2 weeks hardening | `knowledge/` |
