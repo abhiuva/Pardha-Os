@@ -62,7 +62,9 @@ class JiraSyncRequest(BaseModel):
     description: Optional[str] = None
     business_name: Optional[str] = None
     priority: str = "medium"
-    dry_run: bool = False
+    # Safe by default (PE0OM-75): a live Jira write must be requested explicitly and
+    # additionally requires PARDHA_EXTERNAL_WRITES_ENABLED.
+    dry_run: bool = True
 
 
 class JiraStatus(BaseModel):

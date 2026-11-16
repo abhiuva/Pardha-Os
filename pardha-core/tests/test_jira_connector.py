@@ -118,6 +118,7 @@ class JiraConnectorTestCase(unittest.TestCase):
                 description="Coordinate product, onboarding, and engineering delivery for three new schools.",
                 business_name="EatOnTime",
                 priority="high",
+                dry_run=False,  # exercise the write path; the fake client never reaches the network
             ),
             client=fake,
         )

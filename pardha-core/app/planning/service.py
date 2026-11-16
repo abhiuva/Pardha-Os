@@ -31,6 +31,31 @@ from app.planning.schemas import (
 HIGH_RISK_TERMS = ("send email", "launch campaign", "deploy", "merge code", "delete", "production")
 MEDIUM_RISK_TERMS = ("acquire", "get ", "need ", "create", "develop", "feature", "jira", "document", "task", "goal", "sprint", "customer", "pilot")
 
+# Plans at these risk levels may only run after an explicit, recorded founder approval
+# (PE0OM-75). A request-time flag can never stand in for that decision.
+APPROVAL_REQUIRED_RISK_LEVELS = frozenset({"medium", "high"})
+
+
+class PlanStateConflict(ValueError):
+    """The requested transition is not allowed in the plan's current approval state."""
+
+
+def planning_execution_gate(session, plan: ExecutionPlanModel) -> tuple[str, str]:
+    """Decide whether a plan may run: ("allow" | "await_approval" | "blocked", reason).
+
+    Single source of truth for both execution paths (planning API and runtime queue).
+    """
+    approvals = session.query(PlanApprovalModel).filter(PlanApprovalModel.plan_id == plan.plan_id).all()
+    statuses = {approval.status for approval in approvals}
+    if plan.status == "rejected" or "rejected" in statuses:
+        return "blocked", "Plan was rejected by the founder and can never be executed. Create a new plan for a changed request."
+    if "pending" in statuses:
+        return "await_approval", "Founder approval is pending."
+    plan_level_approved = any(approval.status == "approved" and approval.node_id is None for approval in approvals)
+    if plan.risk_level in APPROVAL_REQUIRED_RISK_LEVELS and not plan_level_approved:
+        return "await_approval", f"A {plan.risk_level}-risk plan requires a recorded founder approval before execution."
+    return "allow", ""
+
 
 def create_plan(request: PlanRequest) -> PlanningResult:
     now = datetime.now(timezone.utc)
@@ -213,9 +238,13 @@ def execute_plan(plan_id: str) -> PlanExecution:
         plan = session.get(ExecutionPlanModel, plan_id)
         if plan is None:
             raise ValueError("Plan not found.")
-        pending = session.query(PlanApprovalModel).filter(PlanApprovalModel.plan_id == plan_id, PlanApprovalModel.status == "pending").count()
-        if pending:
-            execution = _create_execution(session, plan, "waiting_approval", now, [{"event": "waiting_approval", "detail": "Approval required before execution."}])
+        gate, reason = planning_execution_gate(session, plan)
+        if gate == "blocked":
+            _timeline(session, plan.goal_id, plan_id, plan.business_id, "execution_blocked", "Execution Blocked", reason, {})
+            session.commit()
+            raise PlanStateConflict(reason)
+        if gate == "await_approval":
+            execution = _create_execution(session, plan, "waiting_approval", now, [{"event": "waiting_approval", "detail": reason}])
             session.commit()
             return _execution(execution)
 
@@ -359,12 +388,36 @@ def _decide_plan(plan_id: str, decision: ApprovalDecision, status: str) -> Plann
         plan = session.get(ExecutionPlanModel, plan_id)
         if plan is None:
             raise ValueError("Plan not found.")
-        approvals = session.query(PlanApprovalModel).filter(PlanApprovalModel.plan_id == plan_id, PlanApprovalModel.status == "pending").all()
+        all_approvals = session.query(PlanApprovalModel).filter(PlanApprovalModel.plan_id == plan_id).all()
+        if plan.status == "rejected" or any(approval.status == "rejected" for approval in all_approvals):
+            raise PlanStateConflict("Plan was rejected and cannot be decided again. Create a new plan for a changed request.")
+        approvals = [approval for approval in all_approvals if approval.status == "pending"]
         for approval in approvals:
             approval.status = status
             approval.decided_by = decision.decided_by
             approval.decision_comment = decision.comment
             approval.decided_at = now
+        already_recorded = any(approval.node_id is None and approval.status == status for approval in all_approvals)
+        if not already_recorded:
+            # Every decision is recorded, even when no approval request was opened at creation time.
+            session.add(
+                PlanApprovalModel(
+                    approval_id=str(uuid4()),
+                    plan_id=plan_id,
+                    node_id=None,
+                    business_id=plan.business_id,
+                    approval_type="plan_execution",
+                    risk_level=plan.risk_level,
+                    title=f"Approve plan: {plan.title}",
+                    detail="Founder decision recorded without a prior pending approval request.",
+                    status=status,
+                    requested_by="Planner",
+                    decided_by=decision.decided_by,
+                    decision_comment=decision.comment,
+                    created_at=now,
+                    decided_at=now,
+                )
+            )
         plan.status = "approved" if status == "approved" else "rejected"
         plan.approval_required = 0 if status == "approved" else plan.approval_required
         plan.updated_at = now

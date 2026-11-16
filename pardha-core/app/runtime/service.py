@@ -18,7 +18,7 @@ from app.db.models import (
     RuntimeQueueItem as RuntimeQueueItemModel,
     ToolRuntimeInvocation as ToolRuntimeInvocationModel,
 )
-from app.planning.service import list_approvals
+from app.planning.service import list_approvals, planning_execution_gate
 from app.runtime.schemas import (
     AutomationRule,
     AutomationRuleCreate,
@@ -151,6 +151,19 @@ def run_execution(execution_id: str) -> RuntimeExecution:
         if execution is None:
             raise ValueError("Execution not found.")
         plan = session.get(ExecutionPlanModel, execution.plan_id)
+        gate, reason = planning_execution_gate(session, plan) if plan is not None else ("blocked", "Plan not found.")
+        if gate != "allow":
+            # PE0OM-75: same approval gate as the planning API; no node runs and the plan's
+            # own status (e.g. "rejected") is left untouched.
+            execution.status = "blocked" if gate == "blocked" else "waiting"
+            execution.current_stage = execution.status
+            execution.progress = 0
+            execution.logs = list(execution.logs or []) + [{"event": "execution_blocked" if gate == "blocked" else "waiting_approval", "detail": reason}]
+            execution.updated_at = now
+            _timeline(session, execution.business_id, f"execution_{execution.status}", f"Execution {execution.status.title()}", reason, {"execution_id": execution.execution_id, "plan_id": execution.plan_id})
+            session.commit()
+            session.refresh(execution)
+            return _execution(execution)
         nodes = session.query(ExecutionPlanNodeModel).filter(ExecutionPlanNodeModel.plan_id == execution.plan_id).order_by(ExecutionPlanNodeModel.created_at.asc()).all()
         execution.status = "running"
         execution.current_stage = "running"

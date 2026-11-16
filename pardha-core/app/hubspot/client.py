@@ -6,6 +6,8 @@ from typing import Any, Dict
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from app.security.write_guard import ExternalWriteBlocked, guard_external_write
+
 
 class HubSpotClientError(RuntimeError):
     def __init__(self, message: str, retryable: bool = False):
@@ -28,6 +30,11 @@ class HubSpotClient:
         return self._create_object("deals", payload)
 
     def _create_object(self, object_type: str, payload: Dict[str, Any]) -> str:
+        try:
+            guard_external_write("hubspot", f"create {object_type}")
+        except ExternalWriteBlocked as exc:
+            # Not retryable: the write was deliberately blocked, not a transient failure.
+            raise HubSpotClientError(str(exc), retryable=False) from exc
         body = json.dumps({"properties": payload}).encode("utf-8")
         request = Request(
             f"{self.base_url}/crm/v3/objects/{object_type}",

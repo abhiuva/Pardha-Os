@@ -4,7 +4,10 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from app.security.write_guard import guard_external_write
 from app.settings import get_settings
+
+_READ_ONLY_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
 class JiraConfigurationError(RuntimeError):
@@ -121,6 +124,8 @@ class JiraClient:
         return self._request("POST", "/rest/api/3/issue", json={"fields": fields})
 
     def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+        if method.upper() not in _READ_ONLY_METHODS:
+            guard_external_write("jira", f"{method.upper()} {path}")
         with httpx.Client(
             base_url=self.jira_url,
             auth=(self.email, self.api_token),
