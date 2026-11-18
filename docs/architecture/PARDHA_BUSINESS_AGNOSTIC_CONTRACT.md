@@ -4,7 +4,7 @@
 |---|---|
 | Jira | PE0OM-93 (Wave 0), epic PE0OM-92 |
 | Status | **PROPOSED, awaiting Product Owner sign-off.** Nothing here overrides Architecture B or an earlier PO decision until signed off. |
-| Baseline | `develop` @ `97890a1`, 2026-11-17 |
+| Baseline | `develop` @ `a321c48db9fa9024cd07ae04cbc7cc68fc543423`, 2026-11-18 |
 | Inputs | Pardha AI OS MVP Master Plan v1.0 (2026-11-17); `CLAUDE.md` §4 Architecture B (locked); PE0OM-34..39, PE0OM-56 (75–79), PE0OM-33, PE0OM-32 |
 
 This document maps the product-agnostic MVP plan onto the approved architecture. Section 2 lists every point where
@@ -16,10 +16,10 @@ the plan would change an approved decision; each needs explicit PO sign-off and 
 |---|---|---|---|
 | Founder Conversational Layer | Founder/Operator Console, CEO conversation, voice | `dashboard/src`, `app/conversations` (voice sessions) | PE0OM-33, 50, 60 (Codex lane) |
 | Authenticated Conversation Gateway | Authenticated principal → tenant/business scope | `app/auth`, `app/enterprise`, `app/business`, `app/conversations` | PE0OM-76, 77, 55 |
-| OpenAI Chief of Staff | CEO Orchestrator / Plan Engine / Task Delegation | `app/chief_of_staff`, `app/planning`, `app/ceo_agent` (uncommitted, PE0OM-33/73) | PE0OM-44, 58, 73 |
+| OpenAI Chief of Staff | CEO Orchestrator / Plan Engine / Task Delegation | `app/chief_of_staff`, `app/planning`; the referenced `app/ceo_agent` prototype is not committed and is not an existing module | PE0OM-44, 58, 73 |
 | Registered Specialist Agent Runtime | Agent registry, org chart, agent instances | `app/agents`, `app/capabilities`, `app/mcp`, `app/kernel`, `specialists` table | PE0OM-45, 61–66 (design gates), 84–89, 94 |
-| Central Policy / RBAC / HITL | Policy-enforced capability gateway, approval gate, budgets | `app/capabilities/policy.py` (PE0OM-75), `app/planning` approvals | PE0OM-75, 77, 78, 59 |
-| Durable Verified Executor | Durable execution control plane: claims, leases, retries, idempotency | `app/runtime`, `app/planning`, write guard (PE0OM-75) | PE0OM-78, 58 |
+| Central Policy / RBAC / HITL | Policy-enforced capability gateway, approval gate, budgets | `app/planning` approvals; open PR #6 adds `app/capabilities/policy.py` for the limited PE0OM-75 allowlist | PE0OM-75, 77, 78, 59 |
+| Durable Verified Executor | Durable execution control plane: claims, leases, retries, idempotency | `app/runtime`, `app/planning`; PR #6 adds the limited PE0OM-75 controls described in §3.1, while leases and recovery remain PE0OM-78 | PE0OM-78, 58 |
 | Business Connectors and Memory | Business packages, connectors, scoped memory | `app/jira`, `app/hubspot`, `app/sales`, `app/marketing`, `app/knowledge`, `app/memory` | PE0OM-46, 47, 48, 94, 95, 96 |
 | (cross-cutting) Model routing | Reasoning Gateway (truthful fallback, metering) | `app/reasoning`, `app/ai` | PE0OM-32, 43, 57 |
 
@@ -33,7 +33,7 @@ task leases, budgets) live inside existing layers.
 | A1 | "CEO Orchestrator" plans and delegates | The **OpenAI Chief of Staff** plans and delegates | Treat "CEO" as the founder-facing name of the Chief of Staff. No second orchestrator. |
 | A2 | Reasoning Gateway "selects configured model" (provider-neutral) | Chief of Staff is **OpenAI** (model ID configurable) | Keep it: the Chief of Staff requests `provider=openai` through the gateway. The gateway stays provider-neutral for other callers. See §3. |
 | A3 | Sales Scout/Writer/Handler/Analyst, PM and CTO are "P0 active" | Specialists are **design gates** (PE0OM-61..66); no build without an approved spec | No specialist is implemented before its gate is approved. Until then the Chief of Staff may call only existing registered **read** capabilities, labelled deterministic. Sales (PE0OM-96) stays blocked by PE0OM-64. |
-| A4 | Approval must come from a **different** principal than the requester | Specific human approval bound to the exact payload | Agent-initiated actions: requester = agent instance, approver = authorized human. Founder-initiated external writes: **PO decision** (second approver or founder self-approval with confirmation). |
+| A4 | Approval must come from a **different** principal than the requester | Specific human approval bound to the exact payload | Agent-initiated action: an authorized human approves for the agent requester. Founder-initiated action: **OPEN FOUNDER DECISION** between a second-person approver and authenticated founder self-approval with explicit confirmation. This document selects neither policy. |
 | A5 | Tenant + business scoping on every record; multiple business packages | Tenant/project isolation; "never mix projects" | Compatible. Ownership backfill follows the locked rule: quarantine, never auto-assign. |
 | A6 | Reversible migrations validated on clean PostgreSQL | No decision; schema today is created from models | Adopt Alembic (new dependency, **PO approval**). |
 | A7 | Browser speech recognition, push-to-talk | Jarvis is an unapproved candidate; fallback is React text chat | Compatible if browser API only (no Jarvis import). Codex lane. |
@@ -56,7 +56,18 @@ Current state (verified): the gateway's OpenAI provider is configured but intent
 deterministic agent briefs and summaries. PE0OM-43 (real OpenAI adapter, single honest router) and PE0OM-44 (Chief of
 Staff orchestration) close this; no OpenAI spend is authorized yet.
 
+### 3.1 Implemented execution controls vs durable executor
+
+| State | Verified behavior | Explicit boundary |
+|---|---|---|
+| Current `develop` @ `a321c48db9fa9024cd07ae04cbc7cc68fc543423` | Existing planning/runtime services; no PR #6 execution hardening is merged | Do not attribute PR #6 behavior to `develop` |
+| PR #6 @ `58ae26e63e5ee5bbb160d0dda3024f814073a436` (open) | Atomic execution and queue claims, retry serialization, attempt-generation fencing, stale-worker persistence rejection, fail-closed capability/write guards, explicit operator-driven queue processing | No lease expiry, heartbeat, crash recovery, unattended worker, plan-node exactly-once across entry points or durable exact-payload action approval |
+| Future PE0OM-78 | Durable payload-bound approvals, leases, heartbeat/expiry recovery, fenced takeover and idempotent execution across entry points | Proposed work; not implemented by PR #6 or this document |
+
 ## 4. Proposed decisions (ADRs, pending sign-off)
+
+Every item in this section, including A1–A9 mappings in §2, remains **PROPOSED** until the founder explicitly
+approves it. Imperative wording describes the proposed contract and does not record an adopted decision.
 
 1. **Extend, replace nothing.** Control-plane concepts are reimplemented inside existing modules. No Paperclip code.
 2. **Per-request scope.** Each request resolves `AuthenticatedActor` (session) → `BusinessScope(tenant_id, business_id, role)`
@@ -67,7 +78,7 @@ Staff orchestration) close this; no OpenAI spend is authorized yet.
 5. **No product names in engine code.** Selection comes from business packages; names only in demo seed data, seeding only when explicitly enabled. (PE0OM-77/94)
 6. **Policy in server code.** Capabilities classified `read | draft | write | destructive`; decision = membership ∧ agent grant ∧ process scope ∧ connector grant ∧ risk rule ∧ budget; deny wins. Extends the PE0OM-75 allowlist. (PE0OM-78)
 7. **Approvals are persisted requests, never request flags** (§7.4). (PE0OM-78)
-8. **Execution is claimed, leased and idempotent.** Postgres: `SELECT … FOR UPDATE SKIP LOCKED` + lease; tests: optimistic `version` compare-and-set. APScheduler only enqueues. An action is `completed` only when the destination confirms it. (PE0OM-78/58)
+8. **Future PE0OM-78 execution is claimed, leased and idempotent.** Proposed Postgres design: `SELECT … FOR UPDATE SKIP LOCKED` + lease; tests: optimistic `version` compare-and-set. APScheduler only enqueues. An action is `completed` only when the destination confirms it. This is not current PR #6 behavior. (PE0OM-78/58)
 9. **Truthful metadata.** Unknown usage is `null`/`unknown`, never zero; mock and demo data are labelled.
 10. **Routing.** Existing unversioned routes stay. New business-scoped routes use `/businesses/{business_id}/…`. No `/api/v1`.
 11. **Migrations.** Alembic baseline + one reversible revision per schema PR, checked up/down on disposable Postgres (A6).
@@ -76,7 +87,7 @@ Staff orchestration) close this; no OpenAI spend is authorized yet.
 
 | Proposed entity | Proposal | Existing basis |
 |---|---|---|
-| `business_packages` | **New**: versioned config + digest per business | `businesses` has only name/type/description |
+| `business_packages` | **New**: versioned config + digest per business | `businesses` already has nullable `tenant_id`, name, type, description and status; it has no package/version fields |
 | `agent_instances` | **New**, business-scoped, references a role template | `agents` (unscoped, minimal) kept as legacy; `specialists` are role templates |
 | `business_process_definitions` | **New**, versioned, owned by a package | none |
 | `agent_tasks` | **Extend `tasks`** (tenant, goal/plan/node links, parent, assignee instance, priority, dependencies, version, idempotency key) | `tasks` is business-scoped with assignee and status |
@@ -88,8 +99,8 @@ Staff orchestration) close this; no OpenAI spend is authorized yet.
 
 ## 6. Delivery order and existing-issue crosswalk
 
-Dependency chain (Jira "Blocks" links respected):
-`PE0OM-75 (PR #6, in review) → 76 → 77 → 94 (W1) → 78 → 79`, with `PE0OM-93` (this document) blocking `PE0OM-94`,
+Dependency chain (Jira "Blocks" links independently checked 2026-11-18):
+`PE0OM-75 (PR #6, in review) → 76 → 77 → 78 → 79`; separately `77 → 94 (W1)`, with `PE0OM-93` (this document) blocking `PE0OM-94`,
 and `PE0OM-95` + `PE0OM-64` design gate + `PE0OM-78` blocking `PE0OM-96` (sales, no send).
 
 | MVP plan item | Existing issue(s) | Note |
@@ -133,7 +144,7 @@ and `PE0OM-95` + `PE0OM-64` design gate + `PE0OM-78` blocking `PE0OM-96` (sales,
 | GET | `/businesses/{id}/tasks` | viewer | goal-scoped task graph (78) |
 | GET | `/businesses/{id}/runs` | viewer | states, cost (`null` = unknown), errors (78) |
 | GET | `/businesses/{id}/approvals` | viewer | HITL outbox (78) |
-| POST | `/approvals/{approval_id}/decision` | authorized human ≠ requester | `{decision, comment, expected_version}`; business re-derived from the record (78) |
+| POST | `/approvals/{approval_id}/decision` | authorized human; separation rule is the open A4 founder decision | `{decision, comment, expected_version}`; business re-derived from the record (78) |
 | POST | `/businesses/{id}/sales/qualify` · `/sales/draft` | founder | draft only (96) |
 | GET | `/businesses/{id}/sales/outbox` | viewer | staged, unsent (96) |
 | GET | `/businesses/{id}/briefs/latest` | viewer | evidence-backed (44) |
@@ -170,17 +181,30 @@ Separate worktrees and branches; never both tools on one file at once; shared co
 
 ## 9. Third-party code policy
 
-- **Harvey:** only tag `v0.3.0` = commit `e2632eb20ee2d4fb6fe04ae715a52f578acf9a37` (MIT, © 2026 Ethan Rogers). Any reused file is listed in
+- **Harvey:** authoritative repository `ethanplusai/sellbird` (formerly Harvey), only tag `v0.3.0` = commit
+  `e2632eb20ee2d4fb6fe04ae715a52f578acf9a37` (MIT, © 2026 Ethan Rogers), verified from the GitHub tag ref and
+  `LICENSE` at that tag on 2026-11-18. Any reused file is listed in
   `THIRD_PARTY_NOTICES.md` with source path, commit, licence text and modifications, and is reviewed in PE0OM-95 before use.
   Its SQLite store, dashboard, scraping and SMTP transport are not imported.
-- **Sellbird ≥ v0.4.0:** AGPL-3.0. **No source may be copied.** Behaviour may be studied only to write an independent implementation.
-- **Paperclip** (`paperclipai/paperclip`, MIT): architecture reference only; no code imported.
+- **Sellbird ≥ v0.4.0:** the same authoritative repository; tag `v0.4.0` resolves to
+  `2e3b4f16eaa94a781fefa81e859173dc6b7e9afb`, whose `LICENSE` is AGPL-3.0 (verified 2026-11-18).
+  **No source may be copied.** Behaviour may be studied only to write an independent implementation.
+- **Paperclip** (`paperclipai/paperclip`, MIT; repository metadata and `LICENSE` verified 2026-11-18): architecture
+  reference only; no code imported. Any future source reuse requires a commit pin and separate license review.
 - **Jarvis:** unchanged; unapproved candidate under `CLAUDE.md` §4.
 
 ## 10. Baseline and Wave 0 exit gate
 
-Baseline: `develop` @ `97890a1`, backend **155/155** tests pass on a fresh disposable SQLite database with scheduler and
-connectors disabled; with PR #6 applied, 193/193. Frontend build passes.
+Historical developer report: `develop` @ `97890a1` had 155/155 backend tests, and an earlier PR #6 revision reported
+193/193. Those counts are historical and are not presented as independent verification.
+
+Current independent Codex verification on 2026-11-18: PR #8 application tree @
+`019e6b1b72ba3e6d8a4df6789b476b47ccb75a25` passed **155/155** backend tests on a fresh disposable SQLite database
+with credentials unset, scheduler/watchers disabled and live connector writes disabled; its React production build
+also passed. Current `develop` @ `a321c48db9fa9024cd07ae04cbc7cc68fc543423` differs from the tested application tree
+only by documentation. Separate prior Codex QA at current PR #6 HEAD `58ae26e63e5ee5bbb160d0dda3024f814073a436`
+reported **51/51** focused and **206/206** full tests; this document does not relabel that earlier run as evidence
+executed during this remediation.
 
 Wave 0 exit gate (PE0OM-92) and current status:
 
