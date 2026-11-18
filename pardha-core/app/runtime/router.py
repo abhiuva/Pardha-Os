@@ -71,6 +71,8 @@ def retry_execution_route(execution_id: str):
 def rollback_execution_route(execution_id: str):
     try:
         return rollback_execution(execution_id)
+    except ExecutionStateConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

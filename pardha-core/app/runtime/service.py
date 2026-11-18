@@ -36,10 +36,21 @@ from app.runtime.schemas import (
 
 logger = logging.getLogger(__name__)
 
-# PE0OM-75 (Codex QA): an execution runs only after an atomic compare-and-set claim, so the
-# direct run endpoint, the queue and retries can never execute the same execution twice at once.
+# PE0OM-75 (Codex QA): execution ownership.
+# - An execution runs only after an atomic compare-and-set claim, so the direct run endpoint, the
+#   queue and retries can never execute the same execution twice at once.
+# - Attempt-generation fencing: `retries` is the attempt generation. Every ownership change
+#   (a retry today, lease recovery later) increments it. A worker claims a specific generation and
+#   may persist its results only while the execution is still "running" at that generation, so a
+#   stale worker can never overwrite the state of a newer attempt.
+# - A running execution can be neither rolled back nor re-queued (HTTP 409 / idempotent pending).
+# - KNOWN GAP (deferred to PE0OM-78): no lease expiry. If a worker process dies without raising
+#   (killed, host crash), its execution stays "running" and its queue item "processing" until an
+#   operator intervenes. Queue processing is explicit and API-driven; no unattended or background
+#   worker may be enabled before PE0OM-78 adds lease expiry with fenced recovery.
 RUNNABLE_STATUSES = ("queued", "waiting")
 RETRYABLE_STATUSES = ("failed", "waiting", "blocked", "cancelled")
+ROLLBACKABLE_STATUSES = ("queued", "waiting", "failed", "blocked", "completed")
 PENDING_STATUSES = ("queued", "running")
 
 
@@ -47,16 +58,40 @@ class ExecutionStateConflict(ValueError):
     """The execution is in a state where the requested action is not allowed."""
 
 
-def _claim_execution(execution_id: str) -> bool:
-    """Atomically move a runnable execution to "running". Exactly one concurrent caller wins."""
+def _claim_execution(execution_id: str, generation: int) -> bool:
+    """Atomically move a runnable execution at `generation` to "running". Exactly one concurrent
+    caller wins; a caller that observed an older generation loses."""
     with SessionLocal() as session:
         claimed = (
             session.query(RuntimeExecutionModel)
-            .filter(RuntimeExecutionModel.execution_id == execution_id, RuntimeExecutionModel.status.in_(RUNNABLE_STATUSES))
+            .filter(
+                RuntimeExecutionModel.execution_id == execution_id,
+                RuntimeExecutionModel.status.in_(RUNNABLE_STATUSES),
+                RuntimeExecutionModel.retries == generation,
+            )
             .update({"status": "running", "current_stage": "running", "updated_at": datetime.now(timezone.utc)}, synchronize_session=False)
         )
         session.commit()
     return claimed == 1
+
+
+def _still_owner(session, execution_id: str, generation: int) -> bool:
+    """Fence check inside the worker's final transaction. The conditional UPDATE also takes the
+    row's write lock, so ownership cannot change between this check and the commit."""
+    owned = (
+        session.query(RuntimeExecutionModel)
+        .filter(
+            RuntimeExecutionModel.execution_id == execution_id,
+            RuntimeExecutionModel.status == "running",
+            RuntimeExecutionModel.retries == generation,
+        )
+        .update({"updated_at": datetime.now(timezone.utc)}, synchronize_session=False)
+    )
+    return owned == 1
+
+
+class _StaleAttempt(Exception):
+    """The worker lost ownership of the execution; its results must not be persisted."""
 
 
 def _claim_queue_item(queue_id: str) -> bool:
@@ -223,26 +258,36 @@ def _run_execution(execution_id: str) -> tuple[RuntimeExecution, bool]:
         if current is None:
             raise ValueError("Execution not found.")
         snapshot = _execution(current)
-    if not _claim_execution(execution_id):
-        with SessionLocal() as session:
-            return _execution(session.get(RuntimeExecutionModel, execution_id)), False
+        generation = current.retries
+    if not _claim_execution(execution_id, generation):
+        return _current(execution_id), False
     try:
-        return _execute_claimed(execution_id), True
+        return _execute_claimed(execution_id, generation), True
+    except _StaleAttempt:
+        logger.warning("Discarded results of stale attempt %s of runtime execution %s", generation, execution_id)
+        return _current(execution_id), False
     except Exception:
-        # Never leave a claimed execution stuck in "running": record the failure, then re-raise.
+        # Never leave a claimed execution stuck in "running": record the failure (fenced to this
+        # attempt, so a newer attempt is never overwritten), then re-raise.
         with SessionLocal() as session:
-            execution = session.get(RuntimeExecutionModel, execution_id)
-            if execution is not None and execution.status == "running":
+            if _still_owner(session, execution_id, generation):
+                execution = session.get(RuntimeExecutionModel, execution_id)
                 execution.status = "failed"
                 execution.current_stage = "failed"
-                execution.logs = list(execution.logs or []) + [{"event": "execution_failed", "detail": "unexpected error during execution"}]
-                execution.updated_at = datetime.now(timezone.utc)
+                execution.logs = list(execution.logs or []) + [{"event": "execution_failed", "attempt": generation, "detail": "unexpected error during execution"}]
                 session.commit()
+            else:
+                session.rollback()
         logger.exception("Runtime execution %s failed (previous status %s)", execution_id, snapshot.status)
         raise
 
 
-def _execute_claimed(execution_id: str) -> RuntimeExecution:
+def _current(execution_id: str) -> RuntimeExecution:
+    with SessionLocal() as session:
+        return _execution(session.get(RuntimeExecutionModel, execution_id))
+
+
+def _execute_claimed(execution_id: str, generation: int) -> RuntimeExecution:
     started = perf_counter()
     now = datetime.now(timezone.utc)
     with SessionLocal() as session:
@@ -263,7 +308,7 @@ def _execute_claimed(execution_id: str) -> RuntimeExecution:
             execution.logs = list(execution.logs or []) + [{"event": "execution_blocked" if gate == "blocked" else "waiting_approval", "detail": reason}]
             execution.updated_at = now
             _timeline(session, execution.business_id, f"execution_{execution.status}", f"Execution {execution.status.title()}", reason, {"execution_id": execution.execution_id, "plan_id": execution.plan_id})
-            session.commit()
+            _commit_if_owner(session, execution_id, generation)
             session.refresh(execution)
             return _execution(execution)
         nodes = session.query(ExecutionPlanNodeModel).filter(ExecutionPlanNodeModel.plan_id == execution.plan_id).order_by(ExecutionPlanNodeModel.created_at.asc()).all()
@@ -312,9 +357,18 @@ def _execute_claimed(execution_id: str) -> RuntimeExecution:
         _notify(session, execution.business_id, "high" if execution.status == "failed" else "medium", "execution", f"Execution {execution.status.title()}", f"Runtime execution {execution.execution_id} is {execution.status}.", {"execution_id": execution.execution_id})
         _timeline(session, execution.business_id, f"execution_{execution.status}", f"Execution {execution.status.title()}", execution.execution_id, {"progress": execution.progress})
         _run_automation(session, execution.business_id, f"Execution {execution.status.title()}", {"execution_id": execution.execution_id, "status": execution.status})
-        session.commit()
+        _commit_if_owner(session, execution_id, generation)
         session.refresh(execution)
         return _execution(execution)
+
+
+def _commit_if_owner(session, execution_id: str, generation: int) -> None:
+    """Persist the attempt's results only if it still owns the execution; otherwise discard all of
+    them (node states, invocations, notifications, plan status) and raise _StaleAttempt."""
+    if not _still_owner(session, execution_id, generation):
+        session.rollback()
+        raise _StaleAttempt(execution_id)
+    session.commit()
 
 
 def retry_execution(execution_id: str) -> RuntimeExecution:
@@ -352,13 +406,29 @@ def retry_execution(execution_id: str) -> RuntimeExecution:
 
 
 def rollback_execution(execution_id: str) -> RuntimeExecution:
+    """Cancel an execution that is not running. Atomic: a running attempt is never cancelled
+    underneath its worker (that would let a retry start a second concurrent attempt); the caller
+    gets ExecutionStateConflict (HTTP 409). Rolling back an already-cancelled execution is a no-op."""
+    now = datetime.now(timezone.utc)
     with SessionLocal() as session:
         execution = session.get(RuntimeExecutionModel, execution_id)
         if execution is None:
             raise ValueError("Execution not found.")
-        execution.status = "cancelled"
-        execution.current_stage = "rolled_back"
-        execution.rollback = {"completed": True, "strategy": "mark_execution_cancelled", "rolled_back_at": datetime.now(timezone.utc).isoformat()}
+        cancelled = (
+            session.query(RuntimeExecutionModel)
+            .filter(RuntimeExecutionModel.execution_id == execution_id, RuntimeExecutionModel.status.in_(ROLLBACKABLE_STATUSES))
+            .update({"status": "cancelled", "current_stage": "rolled_back", "updated_at": now}, synchronize_session=False)
+        )
+        if cancelled != 1:
+            session.rollback()
+            session.expire_all()
+            current = session.get(RuntimeExecutionModel, execution_id)
+            if current.status == "cancelled":
+                return _execution(current)
+            raise ExecutionStateConflict(f"Execution is {current.status}; it cannot be rolled back while an attempt is active.")
+        session.expire_all()
+        execution = session.get(RuntimeExecutionModel, execution_id)
+        execution.rollback = {"completed": True, "strategy": "mark_execution_cancelled", "rolled_back_at": now.isoformat()}
         logs = list(execution.logs or [])
         logs.append({"event": "rollback_completed", "strategy": execution.rollback["strategy"]})
         execution.logs = logs
