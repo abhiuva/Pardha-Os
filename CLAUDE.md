@@ -93,7 +93,7 @@ Keep FastAPI, React and PostgreSQL. Don't rebuild a working service just because
 - **Every external business-system write in V1 needs specific human approval bound to the exact payload.**
   Approvals are **durably persisted** and must survive process restarts. Each approval record captures:
   - the authenticated requesting actor;
-  - the project and tenant scope;
+  - the tenant, project and business scope wherever each applies;
   - the destination system;
   - the exact proposed action and its payload hash;
   - the decision-maker's identity and authorization;
@@ -102,6 +102,9 @@ Keep FastAPI, React and PostgreSQL. Don't rebuild a working service just because
   - immutable decision and audit events;
   - the execution status and outcome;
   - an idempotency key, with replay protection.
+
+  Approval consumption is atomic and single-use. Under concurrent execution attempts, exactly one attempt may
+  transition an approved record to consumed; every losing or replayed attempt fails closed and is audited.
 
   No rejected, expired, modified, unapproved or previously consumed action may execute. No request payload may
   self-declare approval authority; approval authority comes only from the server-verified decision-maker.
