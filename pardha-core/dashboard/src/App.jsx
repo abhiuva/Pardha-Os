@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CeoConsole from "./ceo-console/CeoConsole";
 
 const REFRESH_MS = 15_000;
 
@@ -409,6 +410,7 @@ function MissionLanding({ user, data, activeBusiness, onBrief, onOpenConversatio
 
 const navItems = [
   ["Executive Dashboard", "home"],
+  ["CEO Agent", "founder"],
   ["DP360 Command", "command"],
   ["Ask Pardha", "chat"],
   ["Businesses", "business"],
@@ -1012,7 +1014,7 @@ function SettingsPage({ data, diagnostics, failures, onModelStart, onModelStop, 
 function App() {
   const initialParams = new URLSearchParams(window.location.search);
   const initialUrlToken = initialParams.get("session");
-  const initialPage = initialParams.get("page") || "Executive Dashboard";
+  const initialPage = initialParams.get("page") || (window.location.pathname === "/ceo-agent" ? "CEO Agent" : "Executive Dashboard");
   const [data, setData] = useState(initialData);
   const [apiStates, setApiStates] = useState({});
   const [authToken, setAuthToken] = useState(() => initialUrlToken || localStorage.getItem("pardha_session") || "");
@@ -1867,6 +1869,7 @@ function App() {
 
   const pages = {
     "Executive Dashboard": <ExecutiveDashboardPage user={user} data={data} activeBusiness={activeBusiness} onAsk={openAsk} onVoice={startVoice} onApprove={approvePlan} onReject={rejectPlan} working={working} voiceState={voiceState} />,
+    "CEO Agent": <CeoConsole businesses={data.businesses} initialBusinessId={activeBusinessId} token={authToken} />,
     "DP360 Command": <DP360CommandPage command={data.dp360Command} onAsk={openAsk} onLoadDemo={loadDP360Demo} working={working} />,
     "Ask Pardha": <AskPardhaTab data={data} activeBusiness={activeBusiness} activeConversationId={conversationId} messages={chatMessages} conversations={data.conversations} timeline={conversationTimeline} input={chatInput} setInput={setChatInput} onSend={sendConversationMessage} working={working} voiceState={voiceState} interimTranscript={interimTranscript} streamingEvents={streamingEvents} onVoiceStart={startVoice} onVoiceStop={stopVoice} onOpenConversation={openConversation} onPatchConversation={patchConversation} onDeleteConversation={deleteConversationAction} onExportConversation={exportConversationAction} />,
     Businesses: <BusinessesPage data={data} activeBusiness={activeBusiness} businessName={businessName} setBusinessName={setBusinessName} createBusiness={createBusiness} switchBusiness={switchBusiness} working={working} />,
@@ -1917,7 +1920,7 @@ function App() {
       onModelStart={(model) => controlModel("start", model)}
       onModelStop={(model) => controlModel("stop", model)}
       onModelSwitch={(model) => controlModel("switch", model)}
-      pageOwnsVoice={activeTab === "Marketing"}
+      pageOwnsVoice={activeTab === "Marketing" || activeTab === "CEO Agent"}
     >
       {pages[activeTab] || pages["Executive Dashboard"]}
     </WorkspaceShell>
