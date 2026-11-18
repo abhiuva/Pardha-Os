@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Jira | PE0OM-93 (Wave 0), epic PE0OM-92 |
-| Status | **PROPOSED, awaiting Product Owner sign-off.** Nothing here overrides Architecture B or an earlier PO decision until signed off. |
+| Status | **PROPOSED except A4**, approved by Product Owner on 2026-11-18. All other architecture decisions remain pending sign-off. A4 approval is policy only, not authorization to execute writes. |
 | Baseline | `develop` @ `a321c48db9fa9024cd07ae04cbc7cc68fc543423`, 2026-11-18 |
 | Inputs | Pardha AI OS MVP Master Plan v1.0 (2026-11-17); `CLAUDE.md` §4 Architecture B (locked); PE0OM-34..39, PE0OM-56 (75–79), PE0OM-33, PE0OM-32 |
 
@@ -33,7 +33,7 @@ task leases, budgets) live inside existing layers.
 | A1 | "CEO Orchestrator" plans and delegates | The **OpenAI Chief of Staff** plans and delegates | Treat "CEO" as the founder-facing name of the Chief of Staff. No second orchestrator. |
 | A2 | Reasoning Gateway "selects configured model" (provider-neutral) | Chief of Staff is **OpenAI** (model ID configurable) | Keep it: the Chief of Staff requests `provider=openai` through the gateway. The gateway stays provider-neutral for other callers. See §3. |
 | A3 | Sales Scout/Writer/Handler/Analyst, PM and CTO are "P0 active" | Specialists are **design gates** (PE0OM-61..66); no build without an approved spec | No specialist is implemented before its gate is approved. Until then the Chief of Staff may call only existing registered **read** capabilities, labelled deterministic. Sales (PE0OM-96) stays blocked by PE0OM-64. |
-| A4 | Approval must come from a **different** principal than the requester | Specific human approval bound to the exact payload | Agent-initiated action: an authorized human approves for the agent requester. Founder-initiated action: **OPEN FOUNDER DECISION** between a second-person approver and authenticated founder self-approval with explicit confirmation. This document selects neither policy. |
+| A4 — **PO APPROVED 2026-11-18** | Approval must come from a **different** principal than the requester | Specific human approval bound to the exact payload | Founder-initiated external writes require approval by a **second, independently authorized human**; founder self-approval is prohibited. Agent-initiated external writes require an authorized human distinct from the agent requester. Server-derived identity, tenant/business membership, exact-payload binding and durable audit are mandatory. |
 | A5 | Tenant + business scoping on every record; multiple business packages | Tenant/project isolation; "never mix projects" | Compatible. Ownership backfill follows the locked rule: quarantine, never auto-assign. |
 | A6 | Reversible migrations validated on clean PostgreSQL | No decision; schema today is created from models | Adopt Alembic (new dependency, **PO approval**). |
 | A7 | Browser speech recognition, push-to-talk | Jarvis is an unapproved candidate; fallback is React text chat | Compatible if browser API only (no Jarvis import). Codex lane. |
@@ -144,7 +144,7 @@ and `PE0OM-95` + `PE0OM-64` design gate + `PE0OM-78` blocking `PE0OM-96` (sales,
 | GET | `/businesses/{id}/tasks` | viewer | goal-scoped task graph (78) |
 | GET | `/businesses/{id}/runs` | viewer | states, cost (`null` = unknown), errors (78) |
 | GET | `/businesses/{id}/approvals` | viewer | HITL outbox (78) |
-| POST | `/approvals/{approval_id}/decision` | authorized human; separation rule is the open A4 founder decision | `{decision, comment, expected_version}`; business re-derived from the record (78) |
+| POST | `/approvals/{approval_id}/decision` | independently authorized human, distinct from requester | `{decision, comment, expected_version}`; server re-derives business and authenticated requester/approver identity; founder self-approval forbidden (78) |
 | POST | `/businesses/{id}/sales/qualify` · `/sales/draft` | founder | draft only (96) |
 | GET | `/businesses/{id}/sales/outbox` | viewer | staged, unsent (96) |
 | GET | `/businesses/{id}/briefs/latest` | viewer | evidence-backed (44) |
@@ -157,6 +157,9 @@ reasoning_model, reasoning_used, fallback_used, permissions_decision{decision, r
 Fields that do not apply are omitted, never faked.
 
 ### 7.4 Approval contract
+- **A4 approved by PO (2026-11-18):** founder-initiated external business-system writes require a second, independently authorized human approver; founder self-approval is forbidden. Agent-initiated external writes require a human approver distinct from the agent requester. No agent or client-supplied identity may impersonate an approver.
+- The server must verify distinct authenticated requester and approver identities, tenant/business membership, approver role, destination and exact payload; enforce atomic consumption and immutable audit. Alternate sessions or roles cannot circumvent separation of duties. Without an eligible second approver, the write remains pending or blocked; no founder override or emergency bypass is authorized.
+- This is an approved policy, **not an implemented authorization mechanism**. PE0OM-78 must enforce and adversarially test it before external writes are enabled.
 - `payload_digest = sha256(canonical_json({tenant_id, business_id, action_type, target, payload, approval_version}))`, canonical = UTF-8, sorted keys, compact separators.
 - States `pending → approved | rejected | expired | revoked`; `approved → consumed` (single use). Decisions carry `expected_version` (`409` on mismatch).
 - At execution: recheck membership, target, budget, idempotency key and digest; mismatch → deny + audit.
@@ -214,4 +217,5 @@ Wave 0 exit gate (PE0OM-92) and current status:
 | No public route bypasses ownership | NOT MET | PE0OM-76 (route inventory test) + 77 |
 | Baseline tests/build documented | MET (above) | this document |
 | Licence inventory approved | PENDING PO | §9 sign-off |
-| ADR signed off | PENDING PO | §2, §4 |
+| A4 separation of duties | PO APPROVED; enforcement NOT MET | PE0OM-78 and adversarial tests |
+| Remaining ADR decisions | PENDING PO | §2 A1–A3, A5–A9; §4 |
