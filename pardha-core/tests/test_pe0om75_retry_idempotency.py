@@ -335,6 +335,29 @@ class OwnershipRaceTestCase(_RuntimeTestBase):
             runtime_service.process_queue(self.business)
         self.assertEqual(sorted(fake.calls), sorted(nodes))
 
+    def test_rollback_inside_the_queue_claim_window_supersedes_the_item_and_runs_nothing(self):
+        # The queue processor has taken the item ("processing") and is about to claim the
+        # execution when an operator rolls it back. Nothing may run; the item must not be "failed".
+        _, execution_id, _ = self._plan_and_execution()
+        original_claim = runtime_service._claim_execution
+
+        def claim_after_rollback(exec_id, generation):
+            runtime_service.rollback_execution(exec_id)
+            return original_claim(exec_id, generation)
+
+        fake = CountingCapability()
+        with patch.object(runtime_service, "execute_capability", fake), patch.object(runtime_service, "_claim_execution", claim_after_rollback):
+            runtime_service.process_queue(self.business)
+        self.assertEqual(fake.calls, [])
+        self.assertEqual({row.status for row in self._queue_rows(execution_id)}, {"superseded"})
+        with SessionLocal() as session:
+            self.assertEqual(session.get(RuntimeExecutionModel, execution_id).status, "cancelled")
+
+    def test_unknown_execution_ids_return_404_for_run_retry_and_rollback(self):
+        for action in ("run", "retry", "rollback"):
+            with self.subTest(action=action):
+                self.assertEqual(self.client.post(f"/runtime/executions/00000000-0000-0000-0000-000000000000/{action}").status_code, 404)
+
     def test_no_capability_runs_twice_under_mixed_concurrent_run_retry_rollback_and_queue(self):
         _, execution_id, nodes = self._plan_and_execution()
         fake = CountingCapability(delay=0.02)

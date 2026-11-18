@@ -265,3 +265,11 @@ Coverage:
   background queue worker (scheduler, cron, the PE0OM-82 coordinator or similar) may process the runtime
   queue until PE0OM-78 adds leases with heartbeats/expiry, fenced takeover (generation increment) and
   idempotent capability execution. Until then queue processing stays explicit and operator-driven.
+- **Exactly-once is per runtime execution, not per plan node (deferred to PE0OM-78).** The claim and
+  fencing above stop one execution from running twice. They do not stop **different** entry points from
+  running the same plan's nodes: `POST /planning/plans/{plan_id}/execute` re-runs every eligible node on each
+  call (repeated or concurrent calls repeat capability calls), and two separate runtime executions of the
+  same plan can run its nodes concurrently. In PE0OM-75 this can only repeat **verified read-only**
+  capabilities (the capability allowlist) and can never reach an external write (kill switch plus verified
+  authorization). **Dependency:** PE0OM-78 must add plan-node-level exactly-once claims across the planning
+  and runtime paths **before** any write-capable adapter is allowlisted.
