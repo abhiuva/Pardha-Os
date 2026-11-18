@@ -56,8 +56,13 @@ SQLite database, mock connectors, Ollama disabled, deterministic reasoning and n
 ## 5. Dependencies
 
 - Python (`pip-audit`): no known vulnerabilities. `requirements.txt` is unpinned.
-- Dashboard (`npm audit`): 7 advisories (5 high, 2 moderate), all in build and dev-server tooling,
-  not in the shipped React runtime.
+- Dashboard (`npm audit --package-lock-only`, re-run **2026-11-18 03:34 UTC**, Node 23.11.0, npm 10.9.2,
+  unchanged lockfile from `056035d`): **17 advisories (15 high, 2 moderate, 0 critical)**, all in build
+  and dev-server tooling (Vite, Tailwind CSS, PostCSS and their file-matching dependencies). The production
+  dependencies (`react`, `react-dom`; `--omit=dev`) have **0** advisories. The earlier figure of
+  7 advisories (5 high, 2 moderate) was undated; the increase comes from newly published advisories, not
+  from a dependency change. Several Vite advisories concern the dev server, which must stay bound to
+  `127.0.0.1`. Evidence: [`evidence/npm-audit-2026-11-18.txt`](evidence/npm-audit-2026-11-18.txt).
 - Both tracked in **PE0OM-74** (CI, dependency security and isolated testing).
 
 ## 6. Audit conclusions (category level)

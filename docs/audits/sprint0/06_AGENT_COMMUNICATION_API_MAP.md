@@ -16,22 +16,35 @@ No evidence was found of Kafka, RabbitMQ, Redis Streams, NATS, Celery, Temporal,
 
 ## Core API Surface
 
-| Domain | Prefix / important endpoints | Notes |
+Verified against the live route table of the FastAPI app object (`develop` @ `97890a1`, FastAPI 0.163.1;
+included routers enumerated recursively): **245 route-method pairs**, plus the framework documentation routes
+(`/openapi.json`, `/docs`, `/docs/oauth2-redirect`, `/redoc`). Full paths are shown; `*` means "and sub-paths".
+
+| Domain | Actual prefix / important endpoints | Notes |
 |---|---|---|
-| Health/system | `/`, `/system/*`, `/commercial/system/health` | Multiple overlapping status models |
-| Auth | `/auth/login`, `/auth/session`, `/auth/profile`, `/auth/logout` | API-wide enforcement in progress (PE0OM-56) |
-| Businesses | `/businesses`, `/context/switch`, `/context/current` | Context to be bound to the authenticated session (PE0OM-56) |
-| Conversation | `/conversations`, `/conversations/messages`, `/conversations/stream` | New canonical stack |
-| Legacy Chief of Staff | `/chief-of-staff/chat`, `/goals`, `/executive-command` | Overlaps conversation/planning |
-| Capabilities | `/capabilities/*`, `/kernel/execute`, `/kernel/resolve` | Dynamic registry with direct adapters |
-| Planning | `/planning/plan`, `/plans/*`, `/approvals`, `/daily` | HITL records and graph |
-| Runtime | `/runtime/executions`, `/queue`, `/automation`, `/dashboard` | Local execution layer |
-| Knowledge | `/knowledge/upload`, `/search`, `/imports`, `/summary` | Extraction and lexical search |
-| Collaboration | `/objectives`, `/collaborations`, `/tasks` | Deterministic executive flow |
-| Providers | `/ai/providers/*`, `/status/ollama`, `/agents/*/reason` | Mixed real and stub providers |
-| Connectors | `/jira/*`, `/hubspot/*`, `/commercial/connectors/*`, `/mcp/*` | Safety semantics differ by path |
+| Health/system | `GET /`, `/system/database/status`, `/system/ollama/{status,start,stop,switch}`, `/commercial/system/health`, `/reasoning/health` | Multiple overlapping status models; `/system/ollama/*` includes state-changing POSTs |
+| Auth | `POST /auth/login`, `GET /auth/session`, `GET /auth/profile`, `POST /auth/logout`, `GET /auth/security` | API-wide enforcement in progress (PE0OM-56) |
+| Businesses | `/businesses`, `/businesses/{business_id}`, `POST /context/switch`, `GET /context/current` | Context to be bound to the authenticated session (PE0OM-56) |
+| Conversation | `/conversations`, `/conversations/messages`, `/conversations/stream`, `/conversations/{conversation_id}/*` | New canonical stack |
+| Legacy Chief of Staff | `POST /chief/chat`, `/chief/goals`, `GET /chief/executive-command`, `/chief/conversations/*`, `GET /chief/help` | Overlaps conversation/planning |
+| Capabilities | `/capabilities/*`, `POST /kernel/execute`, `POST /kernel/resolve` | Dynamic registry with direct adapters |
+| Planning | `POST /planning/plan`, `/planning/plans/*` (incl. `approve`, `reject`, `execute`), `GET /planning/approvals`, `/planning/goals/*`, `GET /planning/daily` | HITL records and graph |
+| Runtime | `/runtime/executions/*` (incl. `run`, `retry`, `rollback`), `/runtime/queue`, `POST /runtime/queue/process`, `/runtime/automation/rules`, `/runtime/notifications/*`, `GET /runtime/dashboard`, `/runtime/departments`, `/runtime/timeline` | Local execution layer |
+| Knowledge | `/knowledge`, `POST /knowledge/upload`, `GET /knowledge/search`, `/knowledge/imports`, `/knowledge/summary`, `/knowledge/business/{business_name}` | Extraction and lexical search |
+| Collaboration | `/objectives`, `/collaborations`, `GET /tasks`, `/projects`, `POST /projects/scan` | Deterministic executive flow |
+| Agents | `GET /agents`, `/agents/{ceo,cto,pm}/{brief,reason,reasoning}`, `/agents/executions/*`, `POST /agents/register` | Scheduled and on-demand agent briefs |
+| Providers | `/ai/providers/*`, `/status/{ollama,providers,models}` | Mixed real and stub providers |
+| Memory and events | `/memories/*`, `/events/*` | Database records, not a message broker |
+| Connectors | `/jira/*`, `/hubspot/*`, `/whatsapp/*`, `/communications/*`, `/commercial/connectors/*`, `/mcp/*` | Safety semantics differ by path |
+| Sales and marketing | `/sales/*` (leads, demo bookings, post-demo drafts, pipeline), `/marketing/*` (incl. `/marketing/meta/*`) | Domain APIs outside the planner |
+| Founder copilot and demo | `/copilot/*`, `/commercial/*` (dashboards, demo journey), `POST /demo/seed` | Demo and readiness surfaces |
 | Enterprise | `/enterprise/*` | Administration/governance/status surfaces |
 | Factory | `/software-factory/*` | Planning artifacts, approvals, dashboards |
+| Test-only | `GET /test` | Present in normal builds; to be limited to test runs (PE0OM-76) |
+
+Earlier drafts of this table used incorrect or relative prefixes (for example `/chief-of-staff/*`, and
+`/plans`, `/queue` or `/search` without their `/planning`, `/runtime` and `/knowledge` prefixes). Code line
+references in the table above the API surface refer to `develop` @ `97890a1`.
 
 ## Request/Response Path Example
 

@@ -1,0 +1,26 @@
+npm audit evidence: pardha-core/dashboard
+Run: 2026-11-18 03:34 UTC (09:04 Asia/Kolkata), Node v23.11.0, npm 10.9.2
+Command (from pardha-core/dashboard/): npm audit --package-lock-only [--omit=dev] --json
+Lockfile: package-lock.json last changed in 056035d (2026-11-15), sha256 prefix ba080a40ecc6b4e1
+
+All dependencies: 17 advisories (15 high, 2 moderate, 0 critical)
+Production dependencies only (--omit=dev; react, react-dom): 0 advisories
+
+severity  package  direct  advisory / via
+high  anymatch  false  via picomatch
+moderate  baseline-browser-mapping  false  baseline-browser-mapping process termination on invalid input causes denial of service
+high  browserslist  false  Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM; Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)
+high  chokidar  false  via anymatch; via readdirp
+high  fast-glob  false  via micromatch
+high  fdir  false  via picomatch
+high  micromatch  false  via picomatch
+high  nanoid  false  nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero
+high  picomatch  false  picomatch vulnerable to ReDoS through single-branch repeated extglobs
+high  postcss  true  PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure
+moderate  postcss-selector-parser  false  PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion
+high  readdirp  false  via picomatch
+high  source-map-js  false  source-map-js allows event-loop denial of service through indexed source-map section offsets
+high  sucrase  false  via tinyglobby
+high  tailwindcss  true  via chokidar; via fast-glob; via micromatch
+high  tinyglobby  false  via fdir; via picomatch
+high  vite  true  launch-editor: escapeCmdArgs() omits % escaping on Windows; launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors; launch-editor: `fs.existsSync()` existence check can be bypassed on Windows; Vite: Cross origin script execution through Vite custom middleware; Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine; via picomatch; via tinyglobby

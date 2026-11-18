@@ -44,10 +44,12 @@ PARDHA_SAFE_ENV=(
   PARDHA_EXTERNAL_WRITES_ENABLED=false   # emergency write lockdown; enforced once PE0OM-75 is merged
 )
 
-# Live provider/connector credentials and network switches, removed per process with `env -u`.
+# Admin bootstrap credentials, live provider/connector credentials and network switches,
+# removed per process with `env -u`.
 PARDHA_UNSET_CREDENTIALS=(
   -u DATABASE_URL
   -u OPENAI_API_KEY
+  -u PARDHA_ADMIN_EMAIL -u PARDHA_ADMIN_PASSWORD -u PARDHA_ADMIN_PASSWORD_HASH
   -u JIRA_URL -u JIRA_EMAIL -u JIRA_API_TOKEN -u JIRA_PROJECT_KEY
   -u HUBSPOT_ACCESS_TOKEN -u HUBSPOT_PORTAL_ID
   -u META_ACCESS_TOKEN -u META_AD_ACCOUNT_ID -u META_BUSINESS_ACCOUNT_ID
@@ -111,6 +113,14 @@ env "${PARDHA_UNSET_CREDENTIALS[@]}" "${PARDHA_SAFE_ENV[@]}" \
 
 In a second terminal: `curl http://127.0.0.1:8000/` returns `{"name":"Pardha","status":"alive"}`.
 A new random `PARDHA_JWT_SECRET` per start invalidates earlier local sessions, which is intended.
+
+The admin bootstrap variables are unset, so a real admin password from your shell never reaches a local
+run. Without them, the admin (`founder@pardha.local`) is created with a random, unusable password and
+login is not possible, which is the safe default. To try login locally, pass a throwaway,
+development-only password to that one command (for example `PARDHA_ADMIN_PASSWORD=<throwaway>` added before
+`./venv/bin/uvicorn`) and never reuse a real credential. The bootstrap only sets the password when it
+**first creates** the admin record in that runtime database; it never updates an existing one, so use a
+new runtime database file if the admin already exists.
 
 ## 6. Dashboard
 
