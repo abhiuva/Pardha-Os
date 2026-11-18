@@ -41,6 +41,7 @@ temp/
 
 # Playwright
 playwright-report/
+test-results/
 
 # Runtime artifacts
 /private/tmp/
