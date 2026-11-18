@@ -10,6 +10,7 @@ from sqlalchemy import func
 from app.business.service import resolve_business
 from app.capabilities.defaults import DEFAULT_CAPABILITIES
 from app.capabilities.executors import execute_adapter
+from app.capabilities.policy import DENIED, capability_execution_decision
 from app.capabilities.schemas import (
     Capability,
     CapabilityCandidate,
@@ -168,11 +169,17 @@ def execute_capability(request: CapabilityExecutionRequest) -> CapabilityExecuti
     output: dict = {}
     status = "succeeded"
     error = None
-    try:
-        output = execute_adapter(capability.execution_adapter, business_id=business.business_id if business else None, payload=request.payload)
-    except Exception as exc:  # pragma: no cover - stored as API evidence
-        status = "failed"
-        error = str(exc)
+    # PE0OM-75: fail-closed execution policy, enforced here so no endpoint or queue can bypass it.
+    allowed, policy_reason = capability_execution_decision(capability.execution_adapter)
+    if not allowed:
+        status = DENIED
+        error = policy_reason
+    else:
+        try:
+            output = execute_adapter(capability.execution_adapter, business_id=business.business_id if business else None, payload=request.payload)
+        except Exception as exc:  # pragma: no cover - stored as API evidence
+            status = "failed"
+            error = str(exc)
     runtime_ms = max(1, int((perf_counter() - started) * 1000))
     now = datetime.now(timezone.utc)
     with SessionLocal() as session:

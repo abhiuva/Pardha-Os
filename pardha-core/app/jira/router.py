@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.jira.client import JiraConfigurationError
 from app.jira.schemas import JiraIssue, JiraProject, JiraStatus, JiraSyncRequest, JiraSyncResult
 from app.jira.service import get_issues, get_projects, jira_status, sync_jira
+from app.security.write_guard import ExternalWriteBlocked
 
 
 router = APIRouter(prefix="/jira", tags=["jira"])
@@ -19,6 +20,8 @@ def jira_status_route():
 def sync_jira_route(request: JiraSyncRequest):
     try:
         return sync_jira(request)
+    except ExternalWriteBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except JiraConfigurationError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except ValueError as exc:

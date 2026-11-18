@@ -151,6 +151,23 @@ Queue items support:
 - Delayed execution metadata
 - Cancellation/recovery through execution status
 
+Execution safety (PE0OM-75):
+
+- An execution runs only after an atomic claim (`queued`/`waiting` → `running`). Concurrent direct runs,
+  queue processors and retries execute each node at most once; a losing queue item is marked `superseded`.
+- Queue items are claimed atomically (`queued` → `processing`) before processing.
+- `POST /runtime/executions/{execution_id}/retry` only **queues** one retry (status `queued`); it does not also run
+  immediately. Repeated retries while one is pending are idempotent. A `completed` or otherwise non-retryable
+  execution returns `409`.
+- Re-running an execution skips nodes that already completed.
+- `POST /runtime/executions/{execution_id}/rollback` atomically cancels an execution that is **not** running.
+  Rolling back a `running` execution returns `409` (cancelling underneath an active worker would let a retry
+  start a second concurrent attempt). Rolling back an already-cancelled execution is a no-op.
+- Attempt-generation fencing: `retries` is the attempt generation. Every ownership change increments it; a
+  worker claims one generation and can persist results (node states, tool invocations, notifications, plan
+  status, failure records) only while the execution is still `running` at that generation. A stale worker's
+  results are discarded.
+
 ## Notifications
 
 Central notifications support:
@@ -236,3 +253,23 @@ Coverage:
 - Queue processing is explicit API-driven in this sprint, not a background worker.
 - Git/GitHub/deployment runtime categories are represented by the universal contract, but live provider integrations are not added in this sprint.
 - Rollback is currently state-based for safe local execution, not provider-specific undo.
+- **High-risk node approval is not implemented (PE0OM-78).** Approving a plan does not approve its
+  approval-required (high-risk) nodes, and no stored node status unlocks them. Such nodes always remain
+  `waiting`, so plans containing them cannot complete. This is deliberate fail-closed behaviour, not a bypass;
+  verified, payload-bound node approval arrives with PE0OM-78.
+- **No lease expiry or automatic recovery yet (deferred to PE0OM-78).** If a worker process dies without
+  raising (killed, host crash), its execution stays `running` and its queue item `processing`; rollback
+  returns `409` and retry is a no-op for it. Automatic recovery was deliberately not added in PE0OM-75: a
+  time-based takeover cannot tell a slow worker from a dead one, and capability calls that already ran
+  cannot be fenced after the fact, so it could duplicate side effects. **Dependency:** no unattended or
+  background queue worker (scheduler, cron, the PE0OM-82 coordinator or similar) may process the runtime
+  queue until PE0OM-78 adds leases with heartbeats/expiry, fenced takeover (generation increment) and
+  idempotent capability execution. Until then queue processing stays explicit and operator-driven.
+- **Exactly-once is per runtime execution, not per plan node (deferred to PE0OM-78).** The claim and
+  fencing above stop one execution from running twice. They do not stop **different** entry points from
+  running the same plan's nodes: `POST /planning/plans/{plan_id}/execute` re-runs every eligible node on each
+  call (repeated or concurrent calls repeat capability calls), and two separate runtime executions of the
+  same plan can run its nodes concurrently. In PE0OM-75 this can only repeat **verified read-only**
+  capabilities (the capability allowlist) and can never reach an external write (kill switch plus verified
+  authorization). **Dependency:** PE0OM-78 must add plan-node-level exactly-once claims across the planning
+  and runtime paths **before** any write-capable adapter is allowlisted.

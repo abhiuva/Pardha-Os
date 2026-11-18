@@ -3,6 +3,12 @@ import os
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from app.db.safety import enforce_test_database_policy
+
+# Test runs must never fall back to the developer database: check the raw setting
+# before the default is applied and before any engine exists.
+enforce_test_database_policy(os.getenv("DATABASE_URL"))
+
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg2:///pardha_core",

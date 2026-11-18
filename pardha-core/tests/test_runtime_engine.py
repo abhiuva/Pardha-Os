@@ -25,7 +25,12 @@ class RuntimeEngineTestCase(unittest.TestCase):
             json={"business_id": business_id, "request": "Acquire 5 pilot customers", "owner": "Founder", "approve": True},
         )
         self.assertEqual(plan.status_code, 201)
-        return plan.json()["plan"]["plan_id"]
+        plan_id = plan.json()["plan"]["plan_id"]
+        # PE0OM-75: the create-time "approve" flag no longer authorizes execution of a
+        # medium/high-risk plan; record an explicit founder approval.
+        approved = self.client.post(f"/planning/plans/{plan_id}/approve", json={"decided_by": "Founder", "comment": "Approved for runtime test."})
+        self.assertEqual(approved.status_code, 200)
+        return plan_id
 
     def test_universal_execution_queue_process_notifications_and_rollback(self):
         plan_id = self._approved_plan(self.dp360["business_id"])

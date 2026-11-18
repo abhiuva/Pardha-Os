@@ -15,6 +15,7 @@ from app.planning.schemas import (
     PlanningTimelineEvent,
 )
 from app.planning.service import (
+    PlanStateConflict,
     approve_plan,
     create_plan,
     daily_executive_plan,
@@ -58,6 +59,8 @@ def plan_route(plan_id: str):
 def approve_plan_route(plan_id: str, decision: ApprovalDecision):
     try:
         return approve_plan(plan_id, decision)
+    except PlanStateConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -66,6 +69,8 @@ def approve_plan_route(plan_id: str, decision: ApprovalDecision):
 def reject_plan_route(plan_id: str, decision: ApprovalDecision):
     try:
         return reject_plan(plan_id, decision)
+    except PlanStateConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -74,6 +79,8 @@ def reject_plan_route(plan_id: str, decision: ApprovalDecision):
 def execute_plan_route(plan_id: str):
     try:
         return execute_plan(plan_id)
+    except PlanStateConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
