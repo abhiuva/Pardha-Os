@@ -36,6 +36,40 @@ from app.runtime.schemas import (
 
 logger = logging.getLogger(__name__)
 
+# PE0OM-75 (Codex QA): an execution runs only after an atomic compare-and-set claim, so the
+# direct run endpoint, the queue and retries can never execute the same execution twice at once.
+RUNNABLE_STATUSES = ("queued", "waiting")
+RETRYABLE_STATUSES = ("failed", "waiting", "blocked", "cancelled")
+PENDING_STATUSES = ("queued", "running")
+
+
+class ExecutionStateConflict(ValueError):
+    """The execution is in a state where the requested action is not allowed."""
+
+
+def _claim_execution(execution_id: str) -> bool:
+    """Atomically move a runnable execution to "running". Exactly one concurrent caller wins."""
+    with SessionLocal() as session:
+        claimed = (
+            session.query(RuntimeExecutionModel)
+            .filter(RuntimeExecutionModel.execution_id == execution_id, RuntimeExecutionModel.status.in_(RUNNABLE_STATUSES))
+            .update({"status": "running", "current_stage": "running", "updated_at": datetime.now(timezone.utc)}, synchronize_session=False)
+        )
+        session.commit()
+    return claimed == 1
+
+
+def _claim_queue_item(queue_id: str) -> bool:
+    """Atomically take a queued item for processing. Exactly one concurrent processor wins."""
+    with SessionLocal() as session:
+        claimed = (
+            session.query(RuntimeQueueItemModel)
+            .filter(RuntimeQueueItemModel.queue_id == queue_id, RuntimeQueueItemModel.status == "queued")
+            .update({"status": "processing", "updated_at": datetime.now(timezone.utc)}, synchronize_session=False)
+        )
+        session.commit()
+    return claimed == 1
+
 
 DEPARTMENTS = {
     "CEO": ["ceo.daily_brief", "diagnostics.system_health"],
@@ -135,10 +169,13 @@ def process_queue(business_id: str) -> list[RuntimeExecution]:
         )
     results = []
     for row in rows:
+        if not _claim_queue_item(row.queue_id):
+            continue  # another processor took this item
         result = None
+        ran = True
         try:
             if row.execution_id:
-                result = run_execution(row.execution_id)
+                result, ran = _run_execution(row.execution_id)
             elif row.capability_id:
                 result = _run_single_capability(row)
         except Exception:
@@ -146,11 +183,17 @@ def process_queue(business_id: str) -> list[RuntimeExecution]:
             # business queue. It is marked failed below and never retried automatically.
             logger.exception("Runtime queue item %s failed during processing", row.queue_id)
             result = None
-        if result is not None:
+        if result is not None and ran:
             results.append(result)
         with SessionLocal() as session:
             fresh = session.get(RuntimeQueueItemModel, row.queue_id)
-            if fresh is not None:
+            if fresh is not None and not ran:
+                # The execution was already run (or is running) through another path, e.g. the
+                # direct run endpoint. This item did not execute anything and is not re-run.
+                fresh.status = "superseded"
+                fresh.updated_at = datetime.now(timezone.utc)
+                session.commit()
+            elif fresh is not None:
                 # PE0OM-75: the queue item reflects the real outcome. Blocked or waiting work is
                 # never reported as completed. Items leave the "queued" state either way, so
                 # they are not picked up again automatically (no retry loop); waiting work
@@ -169,12 +212,41 @@ def _queue_outcome(execution_status: str | None) -> str:
 
 
 def run_execution(execution_id: str) -> RuntimeExecution:
+    return _run_execution(execution_id)[0]
+
+
+def _run_execution(execution_id: str) -> tuple[RuntimeExecution, bool]:
+    """Returns (execution, ran). `ran` is False when another caller holds or already finished the
+    execution: nothing is executed and the current state is returned unchanged."""
+    with SessionLocal() as session:
+        current = session.get(RuntimeExecutionModel, execution_id)
+        if current is None:
+            raise ValueError("Execution not found.")
+        snapshot = _execution(current)
+    if not _claim_execution(execution_id):
+        with SessionLocal() as session:
+            return _execution(session.get(RuntimeExecutionModel, execution_id)), False
+    try:
+        return _execute_claimed(execution_id), True
+    except Exception:
+        # Never leave a claimed execution stuck in "running": record the failure, then re-raise.
+        with SessionLocal() as session:
+            execution = session.get(RuntimeExecutionModel, execution_id)
+            if execution is not None and execution.status == "running":
+                execution.status = "failed"
+                execution.current_stage = "failed"
+                execution.logs = list(execution.logs or []) + [{"event": "execution_failed", "detail": "unexpected error during execution"}]
+                execution.updated_at = datetime.now(timezone.utc)
+                session.commit()
+        logger.exception("Runtime execution %s failed (previous status %s)", execution_id, snapshot.status)
+        raise
+
+
+def _execute_claimed(execution_id: str) -> RuntimeExecution:
     started = perf_counter()
     now = datetime.now(timezone.utc)
     with SessionLocal() as session:
         execution = session.get(RuntimeExecutionModel, execution_id)
-        if execution is None:
-            raise ValueError("Execution not found.")
         plan = session.get(ExecutionPlanModel, execution.plan_id)
         if plan is None:
             gate, reason = "blocked", "Plan not found."
@@ -201,7 +273,14 @@ def run_execution(execution_id: str) -> RuntimeExecution:
         logs = list(execution.logs or [])
         completed = 0
         for node in nodes:
-            if node.approval_required and node.status not in {"completed", "approved"}:
+            if node.status == "completed":
+                # Idempotent re-run (retry or approval follow-up): finished work is never repeated.
+                completed += 1
+                continue
+            if node.approval_required:
+                # KNOWN LIMITATION (PE0OM-78): there is no verified node-level approval yet. A plan
+                # approval does NOT approve high-risk nodes, and no node status (including a
+                # stored "approved") unlocks them, so these nodes always wait. Fail closed.
                 node.status = "waiting"
                 logs.append({"event": "waiting_approval", "node_id": node.node_id, "title": node.title})
                 continue
@@ -239,21 +318,37 @@ def run_execution(execution_id: str) -> RuntimeExecution:
 
 
 def retry_execution(execution_id: str) -> RuntimeExecution:
+    """Queue exactly one retry. The retry runs only through the queue (single execution path);
+    it is never also executed immediately. Repeated or concurrent retry requests while a retry is
+    pending are idempotent; a completed execution is never retried."""
+    now = datetime.now(timezone.utc)
     with SessionLocal() as session:
         execution = session.get(RuntimeExecutionModel, execution_id)
         if execution is None:
             raise ValueError("Execution not found.")
-        execution.retries += 1
-        execution.status = "queued"
-        execution.current_stage = "retry_queued"
-        logs = list(execution.logs or [])
-        logs.append({"event": "retry_queued", "retry": execution.retries})
-        execution.logs = logs
-        execution.updated_at = datetime.now(timezone.utc)
+        claimed = (
+            session.query(RuntimeExecutionModel)
+            .filter(RuntimeExecutionModel.execution_id == execution_id, RuntimeExecutionModel.status.in_(RETRYABLE_STATUSES))
+            .update(
+                {"status": "queued", "current_stage": "retry_queued", "retries": RuntimeExecutionModel.retries + 1, "updated_at": now},
+                synchronize_session=False,
+            )
+        )
+        if claimed != 1:
+            session.rollback()
+            session.expire_all()
+            current = session.get(RuntimeExecutionModel, execution_id)
+            if current.status in PENDING_STATUSES:
+                return _execution(current)  # a run or retry is already pending: no second one
+            raise ExecutionStateConflict(f"Execution is {current.status}; it cannot be retried.")
+        session.expire_all()
+        execution = session.get(RuntimeExecutionModel, execution_id)
+        execution.logs = list(execution.logs or []) + [{"event": "retry_queued", "retry": execution.retries}]
         session.add(_queue_row(execution.business_id, execution.execution_id, execution.plan_id, None, 80, {"type": "retry"}))
         _notify(session, execution.business_id, "medium", "recovery", "Retry Queued", f"Retry queued for execution {execution.execution_id}.", {"execution_id": execution.execution_id})
         session.commit()
-    return run_execution(execution_id)
+        session.refresh(execution)
+        return _execution(execution)
 
 
 def rollback_execution(execution_id: str) -> RuntimeExecution:

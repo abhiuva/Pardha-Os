@@ -151,6 +151,16 @@ Queue items support:
 - Delayed execution metadata
 - Cancellation/recovery through execution status
 
+Execution safety (PE0OM-75):
+
+- An execution runs only after an atomic claim (`queued`/`waiting` → `running`). Concurrent direct runs,
+  queue processors and retries execute each node at most once; a losing queue item is marked `superseded`.
+- Queue items are claimed atomically (`queued` → `processing`) before processing.
+- `POST /runtime/executions/{execution_id}/retry` only **queues** one retry (status `queued`); it does not also run
+  immediately. Repeated retries while one is pending are idempotent. A `completed` or otherwise non-retryable
+  execution returns `409`.
+- Re-running an execution skips nodes that already completed.
+
 ## Notifications
 
 Central notifications support:
@@ -236,3 +246,7 @@ Coverage:
 - Queue processing is explicit API-driven in this sprint, not a background worker.
 - Git/GitHub/deployment runtime categories are represented by the universal contract, but live provider integrations are not added in this sprint.
 - Rollback is currently state-based for safe local execution, not provider-specific undo.
+- **High-risk node approval is not implemented (PE0OM-78).** Approving a plan does not approve its
+  approval-required (high-risk) nodes, and no stored node status unlocks them. Such nodes always remain
+  `waiting`, so plans containing them cannot complete. This is deliberate fail-closed behaviour, not a bypass;
+  verified, payload-bound node approval arrives with PE0OM-78.

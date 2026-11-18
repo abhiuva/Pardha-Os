@@ -170,6 +170,29 @@ class ExternalWriteKillSwitchTestCase(unittest.TestCase):
             self.assertIsInstance(raised.exception.__cause__, ExternalWriteBlocked)
             urlopen.assert_not_called()
 
+    def test_blocked_transition_makes_zero_network_calls_with_switch_off_or_on(self):
+        # Adversarial: the transition path used to list transitions (GET) before the write guard ran.
+        # Every network layer is replaced; any connection attempt fails the test.
+        from app.jira.service import update_engineering_task_status
+
+        def no_network(*_args, **_kwargs):
+            raise AssertionError("network access attempted by a blocked Jira transition")
+
+        for switch, expected in ((None, KILL_SWITCH), ("true", NO_VERIFIED_AUTHORIZATION)):
+            if switch is None:
+                os.environ.pop(EXTERNAL_WRITES_ENV, None)
+            else:
+                os.environ[EXTERNAL_WRITES_ENV] = switch
+            for call in (
+                lambda: self._jira().transition_issue("QA-1", "Done"),
+                lambda: update_engineering_task_status("QA-1", "Done", client=self._jira()),
+            ):
+                with self.subTest(switch=switch), patch("app.jira.client.httpx.Client") as http_client, patch("socket.socket.connect", no_network), patch("socket.create_connection", no_network):
+                    with self.assertRaises(ExternalWriteBlocked) as raised:
+                        call()
+                    self.assertEqual(raised.exception.reason, expected)
+                    http_client.assert_not_called()
+
     def test_unrecognised_values_do_not_enable_writes(self):
         for value in ("", "0", "false", "no", "maybe", "TRUEISH"):
             os.environ[EXTERNAL_WRITES_ENV] = value

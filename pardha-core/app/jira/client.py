@@ -73,7 +73,10 @@ class JiraClient:
         return self.get_issue(issue_key)
 
     def transition_issue(self, issue_key: str, status: str) -> Dict[str, Any]:
-        transitions = self._request("GET", f"/rest/api/3/issue/{issue_key}/transitions").get("transitions", [])
+        # A transition is a write. Enforce the write boundary before the preliminary lookup, so a
+        # blocked transition sends nothing at all (not even the GET that lists transitions).
+        guard_external_write("jira", f"POST /rest/api/3/issue/{issue_key}/transitions")
+        transitions =self._request("GET", f"/rest/api/3/issue/{issue_key}/transitions").get("transitions", [])
         transition = next(
             (
                 item
